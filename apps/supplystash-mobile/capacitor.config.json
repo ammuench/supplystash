@@ -1,0 +1,10 @@
+{
+  "appId": "ch.alexmuen.supplystash",
+  "appName": "supplystash-mobile",
+  "webDir": "dist",
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false
+    }
+  }
+}
