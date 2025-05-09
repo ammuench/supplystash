@@ -1,0 +1,9 @@
+{
+  "name": "@supplystash/prettier-config",
+  "main": "index.js",
+  "version": "1.0.0",
+  "peerDependencies": {
+    "prettier": ">= 3",
+    "prettier-plugin-tailwindcss": ">= 0.6.11"
+  }
+}
