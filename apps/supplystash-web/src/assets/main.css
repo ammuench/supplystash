@@ -1,0 +1,8 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: bumblebee --default, coffee --prefersdark;
+}
+
+#app {
+  height: 100dvh;
+}
