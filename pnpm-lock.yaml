@@ -18,6 +18,9 @@ importers:
       '@eslint/js':
         specifier: ^9.26.0
         version: 9.26.0
+      '@trivago/prettier-plugin-sort-imports':
+        specifier: ^5.2.2
+        version: 5.2.2(@vue/compiler-sfc@3.5.13)(prettier@4.0.0-alpha.12)
       eslint:
         specifier: ^9.26.0
         version: 9.26.0(jiti@2.4.2)
@@ -35,7 +38,7 @@ importers:
         version: 4.0.0-alpha.12
       prettier-plugin-tailwindcss:
         specifier: ^0.6.11
-        version: 0.6.11(prettier@4.0.0-alpha.12)
+        version: 0.6.11(@trivago/prettier-plugin-sort-imports@5.2.2(@vue/compiler-sfc@3.5.13)(prettier@4.0.0-alpha.12))(prettier@4.0.0-alpha.12)
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
@@ -76,6 +79,9 @@ importers:
       tailwindcss:
         specifier: ^4.1.5
         version: 4.1.5
+      theme-change:
+        specifier: ^2.5.0
+        version: 2.5.0
       vue:
         specifier: ^3.5.13
         version: 3.5.13(typescript@5.8.3)
@@ -89,6 +95,9 @@ importers:
       '@supplystash/prettier-config':
         specifier: workspace:*
         version: link:../../packages/prettier-config
+      '@trivago/prettier-plugin-sort-imports':
+        specifier: ^5.2.2
+        version: 5.2.2(@vue/compiler-sfc@3.5.13)(prettier@4.0.0-alpha.12)
       '@tsconfig/node22':
         specifier: ^22.0.1
         version: 22.0.1
@@ -124,7 +133,7 @@ importers:
         version: 4.0.0-alpha.12
       prettier-plugin-tailwindcss:
         specifier: ^0.6.11
-        version: 0.6.11(prettier@4.0.0-alpha.12)
+        version: 0.6.11(@trivago/prettier-plugin-sort-imports@5.2.2(@vue/compiler-sfc@3.5.13)(prettier@4.0.0-alpha.12))(prettier@4.0.0-alpha.12)
       typescript:
         specifier: ~5.8.0
         version: 5.8.3
@@ -143,12 +152,15 @@ importers:
 
   packages/prettier-config:
     dependencies:
+      '@trivago/prettier-plugin-sort-imports':
+        specifier: '>= 5.2.2'
+        version: 5.2.2(@vue/compiler-sfc@3.5.13)(prettier@3.5.3)
       prettier:
         specifier: '>= 3'
         version: 3.5.3
       prettier-plugin-tailwindcss:
         specifier: '>= 0.6.11'
-        version: 0.6.11(prettier@3.5.3)
+        version: 0.6.11(@trivago/prettier-plugin-sort-imports@5.2.2(@vue/compiler-sfc@3.5.13)(prettier@3.5.3))(prettier@3.5.3)
 
 packages:
 
@@ -889,6 +901,22 @@ packages:
     resolution: {integrity: sha512-FE1stRoqdHSb7RxesMfCXE8icwI1W6zGE/512ae3ZDrpkQYTTYeSyUJPRCjZd8CwVAhpDUbi1YR8pcZioFJQ/w==}
     peerDependencies:
       vite: ^5.2.0 || ^6
+
+  '@trivago/prettier-plugin-sort-imports@5.2.2':
+    resolution: {integrity: sha512-fYDQA9e6yTNmA13TLVSA+WMQRc5Bn/c0EUBditUHNfMMxN7M82c38b1kEggVE3pLpZ0FwkwJkUEKMiOi52JXFA==}
+    engines: {node: '>18.12'}
+    peerDependencies:
+      '@vue/compiler-sfc': 3.x
+      prettier: 2.x - 3.x
+      prettier-plugin-svelte: 3.x
+      svelte: 4.x || 5.x
+    peerDependenciesMeta:
+      '@vue/compiler-sfc':
+        optional: true
+      prettier-plugin-svelte:
+        optional: true
+      svelte:
+        optional: true
 
   '@tsconfig/node22@22.0.1':
     resolution: {integrity: sha512-VkgOa3n6jvs1p+r3DiwBqeEwGAwEvnVCg/hIjiANl5IEcqP3G0u5m8cBJspe1t9qjZRlZ7WFgqq5bJrGdgAKMg==}
@@ -1839,6 +1867,9 @@ packages:
   jackspeak@3.4.3:
     resolution: {integrity: sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==}
 
+  javascript-natural-sort@0.7.1:
+    resolution: {integrity: sha512-nO6jcEfZWQXDhOiBtG2KvKyEptz7RVbpGP4vTD2hLBdmNQSsCiicO2Ioinv6UI4y9ukqnBpy+XZ9H6uLNgJTlw==}
+
   jiti@2.4.2:
     resolution: {integrity: sha512-rg9zJN+G4n2nfJl5MW3BMygZX56zKPNVEYYqq7adpmMh4Jn2QNEwhvQlFy6jPVdcod7txZtKHWnyZiA3a0zP7A==}
     hasBin: true
@@ -2588,6 +2619,9 @@ packages:
     resolution: {integrity: sha512-LBAhFyLho16harJoWMg/nZsQYgTrg5jXOn2nCYjRUcZZEdE3qa2zb8QEDRUGVZBW4rlazf2fxkg8tztybTaqWw==}
     engines: {node: '>=10'}
     hasBin: true
+
+  theme-change@2.5.0:
+    resolution: {integrity: sha512-B/UdsgdHAGhSKHTAQnxg/etN0RaMDpehuJmZIjLMDVJ6DGIliRHGD6pODi1CXLQAN9GV0GSyB3G6yCuK05PkPQ==}
 
   tiny-bin@1.11.1:
     resolution: {integrity: sha512-UFC5EwtmCkFshKOBgXZzNFJsHpZrtbWZ/jQj+pwoIGUUbmenlQGGVDOwVqVOuG1nTxICSd+GLp3b+j7dUKZr2Q==}
@@ -3654,6 +3688,34 @@ snapshots:
       tailwindcss: 4.1.5
       vite: 6.3.5(@types/node@22.15.16)(jiti@2.4.2)(less@4.2.2)(lightningcss@1.29.2)(sass@1.85.0)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.1)
 
+  '@trivago/prettier-plugin-sort-imports@5.2.2(@vue/compiler-sfc@3.5.13)(prettier@3.5.3)':
+    dependencies:
+      '@babel/generator': 7.27.1
+      '@babel/parser': 7.27.2
+      '@babel/traverse': 7.27.1
+      '@babel/types': 7.27.1
+      javascript-natural-sort: 0.7.1
+      lodash: 4.17.21
+      prettier: 3.5.3
+    optionalDependencies:
+      '@vue/compiler-sfc': 3.5.13
+    transitivePeerDependencies:
+      - supports-color
+
+  '@trivago/prettier-plugin-sort-imports@5.2.2(@vue/compiler-sfc@3.5.13)(prettier@4.0.0-alpha.12)':
+    dependencies:
+      '@babel/generator': 7.27.1
+      '@babel/parser': 7.27.2
+      '@babel/traverse': 7.27.1
+      '@babel/types': 7.27.1
+      javascript-natural-sort: 0.7.1
+      lodash: 4.17.21
+      prettier: 4.0.0-alpha.12
+    optionalDependencies:
+      '@vue/compiler-sfc': 3.5.13
+    transitivePeerDependencies:
+      - supports-color
+
   '@tsconfig/node22@22.0.1': {}
 
   '@types/estree@1.0.7': {}
@@ -4718,6 +4780,8 @@ snapshots:
     optionalDependencies:
       '@pkgjs/parseargs': 0.11.0
 
+  javascript-natural-sort@0.7.1: {}
+
   jiti@2.4.2: {}
 
   js-beautify@1.15.4:
@@ -5097,13 +5161,17 @@ snapshots:
 
   prelude-ls@1.2.1: {}
 
-  prettier-plugin-tailwindcss@0.6.11(prettier@3.5.3):
+  prettier-plugin-tailwindcss@0.6.11(@trivago/prettier-plugin-sort-imports@5.2.2(@vue/compiler-sfc@3.5.13)(prettier@3.5.3))(prettier@3.5.3):
     dependencies:
       prettier: 3.5.3
+    optionalDependencies:
+      '@trivago/prettier-plugin-sort-imports': 5.2.2(@vue/compiler-sfc@3.5.13)(prettier@3.5.3)
 
-  prettier-plugin-tailwindcss@0.6.11(prettier@4.0.0-alpha.12):
+  prettier-plugin-tailwindcss@0.6.11(@trivago/prettier-plugin-sort-imports@5.2.2(@vue/compiler-sfc@3.5.13)(prettier@4.0.0-alpha.12))(prettier@4.0.0-alpha.12):
     dependencies:
       prettier: 4.0.0-alpha.12
+    optionalDependencies:
+      '@trivago/prettier-plugin-sort-imports': 5.2.2(@vue/compiler-sfc@3.5.13)(prettier@4.0.0-alpha.12)
 
   prettier@3.5.3: {}
 
@@ -5391,6 +5459,8 @@ snapshots:
       commander: 2.20.3
       source-map-support: 0.5.21
     optional: true
+
+  theme-change@2.5.0: {}
 
   tiny-bin@1.11.1:
     dependencies:

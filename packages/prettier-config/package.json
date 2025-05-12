@@ -1,6 +1,6 @@
 {
   "name": "@supplystash/prettier-config",
-  "main": "index.js",
+  "main": "index.mjs",
   "version": "1.0.0",
   "peerDependencies": {
     "prettier": ">= 3",

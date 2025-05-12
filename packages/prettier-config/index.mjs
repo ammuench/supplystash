@@ -1,0 +1,25 @@
+export default {
+  singleQuote: false,
+  trailingComma: "es5",
+  tabWidth: 2,
+  semi: true,
+  jsxSingleQuote: false,
+  bracketSpacing: true,
+  bracketSameLine: false,
+  arrowParens: "always",
+  singleAttributePerLine: true,
+  plugins: [
+    "prettier-plugin-tailwindcss",
+    "@trivago/prettier-plugin-sort-imports",
+  ],
+  importOrder: [
+    "^@/constants/(.*)$",
+    "^@/components/(.*)$",
+    "^@/stores/(.*)$",
+    "^@/types/(.*)$",
+    "^@/utils/(.*)$",
+    "^[./]",
+  ],
+  importOrderSeparation: true,
+  importOrderSortSpecifiers: true,
+};
