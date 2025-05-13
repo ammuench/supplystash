@@ -25,7 +25,7 @@ const toggleNotifs = () => {
     :class="{ 'bg-primary': showSidebar || showNotifs }"
   >
     <header
-      class="navbar bg-primary text-primary-content sticky top-0 rounded-2xl"
+      class="navbar !min-h-14 bg-primary text-primary-content sticky top-0 rounded-2xl"
       :class="{ 'shadow-sm': !showSidebar && !showNotifs }"
     >
       <div class="navbar-start">
@@ -79,5 +79,8 @@ const toggleNotifs = () => {
     :show-sidebar="showSidebar"
     :toggle-sidebar="toggleSidebar"
   />
-  <NotificationsPanel :show-notifications="showNotifs" :toggle-notifications="toggleNotifs"/>
+  <NotificationsPanel
+    :show-notifications="showNotifs"
+    :toggle-notifications="toggleNotifs"
+  />
 </template>
