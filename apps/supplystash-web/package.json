@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "nx serve",
     "build": "run-p type-check \"build-only {@}\" --",
-    "preview": "vite preview",
-    "test:unit": "vitest",
+    "preview": "nx vite:preview",
+    "test:unit": "nx test",
     "test:e2e": "playwright test",
-    "build-only": "vite build",
+    "build-only": "nx vite:build",
     "type-check": "vue-tsc --build",
     "format": "prettier --config-path ./prettier.config.mjs",
     "format:write": "prettier --config-path ./prettier.config.mjs --write"

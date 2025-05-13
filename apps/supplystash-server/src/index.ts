@@ -17,6 +17,7 @@ app.get("/items_test", (c) => {
       warnCount: 1,
     },
   ];
+  return c.json({ testItem });
 });
 
 serve(

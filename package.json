@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "pnpm --filter supplystash-web dev",
     "dev:server": "pnpm --filter supplystash-server dev",
+    "dev:types": "pnpm --filter @supplystash/types dev",
     "lint:staged": "pnpm lint-staged --concurrent true --relative",
     "prepare": "husky"
   },
@@ -44,10 +45,17 @@
       "dev": {
         "continuous": true,
         "dependsOn": [
+          "dev:types",
           "dev:server"
         ]
       },
       "dev:server": {
+        "dependsOn": [
+          "dev:types"
+        ],
+        "continuous": true
+      },
+      "dev:types": {
         "continuous": true
       }
     }
