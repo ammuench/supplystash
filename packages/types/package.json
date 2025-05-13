@@ -1,0 +1,30 @@
+{
+  "name": "@supplystash/types",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "tsup"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.10.0",
+  "dependencies": {
+    "zod": "^3.24.4"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": "./dist/index.js"
+    }
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.3"
+  }
+}
