@@ -15,7 +15,9 @@
     "format:write": "prettier --config-path ./prettier.config.mjs --write"
   },
   "dependencies": {
+    "@supplystash/types": "workspace:*",
     "@tailwindcss/vite": "^4.1.5",
+    "@vueuse/core": "^13.2.0",
     "pinia": "^3.0.1",
     "tailwindcss": "^4.1.5",
     "theme-change": "^2.5.0",
