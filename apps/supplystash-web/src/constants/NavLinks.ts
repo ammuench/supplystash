@@ -1,9 +1,13 @@
-import type { NavIconNames } from "@/types/NavIconNames.type";
+import {
+  Cog6ToothIcon,
+  HomeIcon,
+  ListBulletIcon,
+} from "@heroicons/vue/24/outline";
 
 export type NavLink = {
   display: string;
   link: string;
-  icon: NavIconNames;
+  icon: typeof HomeIcon | typeof Cog6ToothIcon | typeof ListBulletIcon;
   external: boolean;
 };
 
@@ -11,20 +15,20 @@ export const NAV_LINKS: NavLink[] = [
   {
     display: "Home",
     link: "/",
-    icon: "home",
+    icon: HomeIcon,
     external: false,
   },
   {
     display: "Supply List",
     link: "/list",
-    icon: "home",
+    icon: ListBulletIcon,
     external: false,
   },
 
   {
     display: "Settings",
     link: "/settings",
-    icon: "settings",
+    icon: Cog6ToothIcon,
     external: false,
   },
 ];
