@@ -15,8 +15,14 @@ defineProps<{ item: SupplyItem }>();
             height="48"
           />
         </div>
-        <div>
+        <div class="flex-1 min-w-0">
           <h2 class="font-bold truncate">{{ $props.item.name }}</h2>
+          <p class="truncate text-sm">{{ $props.item.description }}</p>
+        </div>
+        <div class="flex-shrink-0">
+          <span class="badge badge-primary">{{
+            $props.item.currentCount
+          }}</span>
         </div>
       </div>
     </div>
