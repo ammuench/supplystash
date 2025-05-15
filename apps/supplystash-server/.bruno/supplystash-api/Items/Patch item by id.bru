@@ -1,0 +1,21 @@
+meta {
+  name: Patch item by id
+  type: http
+  seq: 4
+}
+
+patch {
+  url: http://localhost:3000/items/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: e244ff45-525d-46b7-bbe0-832f2f6d1dc7
+}
+
+body:json {
+  {
+    "name": "New Test Name"
+  }
+}

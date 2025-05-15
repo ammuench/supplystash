@@ -8,8 +8,8 @@ export const supplyItemSchema = z.object({
   imageUrl: z.string().url().optional(),
   purchaseUrl: z.string().url().optional(),
   categories: z.array(z.string().uuid()),
-  currentCount: z.number().nonnegative(),
-  warnCount: z.number().nonnegative().default(1),
+  currentCount: z.number().nonnegative().max(1000),
+  warnCount: z.number().nonnegative().max(1000),
 });
 
 export type SupplyItem = z.infer<typeof supplyItemSchema>;

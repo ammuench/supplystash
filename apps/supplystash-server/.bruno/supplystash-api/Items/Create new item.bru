@@ -1,0 +1,24 @@
+meta {
+  name: Create new item
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:3000/items
+  body: json
+  auth: inherit
+}
+
+body:json {
+   {
+        "listId": "248386a8-3ac7-4821-a00e-58f6f3da7e6c",
+        "name": "Warbler Whistle",
+        "description": "A whistle for warblers!",
+        "imageUrl": "https://picsum.photos/id/514/200/200",
+        "purchaseUrl": "https://immaculate-chirp.name",
+        "categories": [],
+        "currentCount": 1,
+        "warnCount": 0
+      }
+}

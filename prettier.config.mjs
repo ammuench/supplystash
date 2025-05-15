@@ -15,6 +15,7 @@ export default {
   importOrder: [
     "^@/components/(.*)$",
     "^@/constants/(.*)$",
+    "^@/routes/(.*)$",
     "^@/services/(.*)$",
     "^@/stores/(.*)$",
     "^@/types/(.*)$",
