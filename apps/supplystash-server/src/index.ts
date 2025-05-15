@@ -1,6 +1,7 @@
 import { serve } from "@hono/node-server";
-import { type SupplyItem } from "@supplystash/types";
 import { Hono } from "hono";
+
+import { generateMockItems } from "./utils/mocks/generateMockItems.js";
 
 const app = new Hono();
 
@@ -9,15 +10,7 @@ app.get("/", (c) => {
 });
 
 app.get("/items_test", (c) => {
-  const testItem: SupplyItem[] = [
-    {
-      id: "1234",
-      name: "Lysol",
-      count: 10,
-      warnCount: 1,
-    },
-  ];
-  return c.json({ testItem });
+  return c.json({ items: generateMockItems(5) });
 });
 
 serve(

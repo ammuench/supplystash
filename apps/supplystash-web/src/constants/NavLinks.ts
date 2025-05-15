@@ -15,6 +15,13 @@ export const NAV_LINKS: NavLink[] = [
     external: false,
   },
   {
+    display: "Supply List",
+    link: "/list",
+    icon: "home",
+    external: false,
+  },
+
+  {
     display: "Settings",
     link: "/settings",
     icon: "settings",

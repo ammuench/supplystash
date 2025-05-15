@@ -8,10 +8,12 @@
     "format": "prettier --write"
   },
   "dependencies": {
+    "@anatine/zod-mock": "^3.14.0",
     "@hono/node-server": "^1.14.1",
     "hono": "^4.7.8"
   },
   "devDependencies": {
+    "@faker-js/faker": "^9.8.0",
     "@supplystash/prettier-config": "workspace:*",
     "@supplystash/types": "workspace:*",
     "@types/node": "^20.11.17",

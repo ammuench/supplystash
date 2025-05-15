@@ -1,1 +1,1 @@
-export { itemSchema, type SupplyItem } from "./schemas/itemSchema";
+export { supplyItemSchema, type SupplyItem } from "./schemas/itemSchema";

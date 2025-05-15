@@ -12,9 +12,17 @@ export default typescriptEslint.config(
       eslint.configs.recommended,
       ...typescriptEslint.configs.recommended,
     ],
-    files: ["apps/supplystash-server/**/*.ts}"],
+    files: ["apps/supplystash-server/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: globals.browser,
+      parserOptions: {
+        parser: typescriptEslint.parser,
+      },
+    },
     rules: {
-      // your rules
+      "@typescript-eslint/consistent-type-imports": "error",
     },
   },
   // Web Rules
@@ -34,7 +42,7 @@ export default typescriptEslint.config(
       },
     },
     rules: {
-      // your rules
+      "@typescript-eslint/consistent-type-imports": "error",
     },
   },
   // Capacitor Rules
@@ -57,5 +65,5 @@ export default typescriptEslint.config(
       // your rules
     },
   },
-  eslintConfigPrettier,
+  eslintConfigPrettier
 );
