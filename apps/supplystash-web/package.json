@@ -15,6 +15,7 @@
     "format:write": "prettier --config-path ./prettier.config.mjs --write"
   },
   "dependencies": {
+    "@heroicons/vue": "^2.2.0",
     "@supplystash/types": "workspace:*",
     "@tailwindcss/vite": "^4.1.5",
     "@vueuse/core": "^13.2.0",

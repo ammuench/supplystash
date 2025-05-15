@@ -11,7 +11,9 @@ export const generateMockItems = (itemAmt: number = 1) => {
         name: () => faker.commerce.productName(),
         description: () => faker.commerce.productDescription(),
         imageUrl: () =>
-          `https://picsum.photos/id/${faker.number.int({ min: 0, max: 1000 })}/200/200`,
+          faker.datatype.boolean()
+            ? `https://picsum.photos/id/${faker.number.int({ min: 0, max: 1000 })}/200/200`
+            : "",
       },
     });
     return fakeItem;
