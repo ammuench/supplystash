@@ -1,8 +1,19 @@
 <script setup lang="ts">
 import { CubeIcon } from "@heroicons/vue/24/outline";
 import type { SupplyItem } from "@supplystash/types";
+import { computed } from "vue";
 
-defineProps<{ item: SupplyItem }>();
+const props = defineProps<{ item: SupplyItem }>();
+
+const countStatus = computed(() => {
+  if (props.item.currentCount === props.item.warnCount) {
+    return "warn" as const;
+  } else if (props.item.currentCount < props.item.warnCount) {
+    return "error" as const;
+  } else {
+    return "ok" as const;
+  }
+});
 </script>
 <template>
   <div class="card card-border bg-base-300">
@@ -27,9 +38,15 @@ defineProps<{ item: SupplyItem }>();
           <p class="truncate text-sm">{{ $props.item.description }}</p>
         </div>
         <div class="flex-shrink-0">
-          <span class="badge badge-primary">{{
-            $props.item.currentCount
-          }}</span>
+          <span
+            class="badge"
+            :class="{
+              'badge-warning': countStatus === 'warn',
+              'badge-error': countStatus === 'error',
+              'badge-success': countStatus === 'ok',
+            }"
+            >{{ $props.item.currentCount }}</span
+          >
         </div>
       </div>
     </div>
