@@ -36,6 +36,7 @@ export const useSupplyItemStore = defineStore("supplyItem", () => {
 
   return {
     items,
+    focusedItem,
     isLoading,
     error,
     setFocusedItem,
