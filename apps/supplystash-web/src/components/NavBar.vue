@@ -22,7 +22,7 @@ const toggleNotifs = () => {
 <template>
   <div
     class="bg-transparent z-50 p-2 transition-colors ease-in"
-    :class="{ 'bg-primary': showSidebar || showNotifs }"
+    :class="{ '!bg-primary': showSidebar || showNotifs }"
   >
     <header
       class="navbar !min-h-14 bg-primary text-primary-content sticky top-0 rounded-2xl"

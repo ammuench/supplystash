@@ -3,7 +3,10 @@ import { CubeIcon } from "@heroicons/vue/24/outline";
 import type { SupplyItem } from "@supplystash/types";
 import { computed } from "vue";
 
-const props = defineProps<{ item: SupplyItem }>();
+const props = defineProps<{
+  item: SupplyItem;
+  onSelect: (item: SupplyItem) => void;
+}>();
 
 const countStatus = computed(() => {
   if (props.item.currentCount === props.item.warnCount) {
@@ -16,7 +19,14 @@ const countStatus = computed(() => {
 });
 </script>
 <template>
-  <div class="card card-border bg-base-300">
+  <button
+    class="card card-border bg-base-300"
+    @click="
+      () => {
+        $props.onSelect($props.item);
+      }
+    "
+  >
     <div class="card-body p-3">
       <div class="flex flex-row gap-4 items-center">
         <div
@@ -34,8 +44,13 @@ const countStatus = computed(() => {
           />
         </div>
         <div class="flex-1 min-w-0">
-          <h2 class="font-bold truncate">{{ $props.item.name }}</h2>
-          <p class="truncate text-sm">{{ $props.item.description }}</p>
+          <h2 class="font-bold truncate text-left">{{ $props.item.name }}</h2>
+          <p
+            v-if="$props.item.description"
+            class="truncate text-sm text-left"
+          >
+            {{ $props.item.description }}
+          </p>
         </div>
         <div class="flex-shrink-0">
           <span
@@ -50,5 +65,5 @@ const countStatus = computed(() => {
         </div>
       </div>
     </div>
-  </div>
+  </button>
 </template>

@@ -8,6 +8,12 @@ export const useSupplyItemStore = defineStore("supplyItem", () => {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
+  const setFocusedItem = (focusItem: SupplyItem | undefined | null) => {
+    if (focusItem) {
+      focusedItem.value = focusItem;
+    }
+  };
+
   const fetchItems = async () => {
     isLoading.value = true;
     error.value = null;
@@ -32,6 +38,7 @@ export const useSupplyItemStore = defineStore("supplyItem", () => {
     items,
     isLoading,
     error,
+    setFocusedItem,
     fetchItems,
   };
 });

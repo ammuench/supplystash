@@ -1,11 +1,22 @@
 <script setup lang="ts">
+import type { SupplyItem } from "@supplystash/types";
+import { useTemplateRef } from "vue";
+
+import FocusItemDialog from "@/components/FocusItemDialog.vue";
 import SupplyItemList from "@/components/SupplyItemList.vue";
 
 import { useSupplyItemStore } from "@/stores/supplyItem.store";
 
+const modalRef = useTemplateRef("item-details-dialog");
+
 const supplyItemStore = useSupplyItemStore();
 
 supplyItemStore.fetchItems();
+
+const togggleFocusItemModal = (item: SupplyItem) => {
+  supplyItemStore.setFocusedItem(item);
+  modalRef.value?.showModal();
+};
 </script>
 
 <template>
@@ -16,32 +27,14 @@ supplyItemStore.fetchItems();
         v-for="supplyItem in supplyItemStore.items"
         v-else
         :key="supplyItem.id"
+        :on-select="
+          (item) => {
+            togggleFocusItemModal(item);
+          }
+        "
         :item="supplyItem"
       />
-      <dialog
-        id="my_modal_1"
-        class="modal"
-      >
-        <div class="modal-box">
-          <h3 class="text-lg font-bold">Hello!</h3>
-          <p class="py-4">Press ESC key or click the button below to close</p>
-          <div class="modal-action">
-            <button
-              @click="
-                () => {
-                  console.log(Date.now());
-                }
-              "
-            >
-              another btn
-            </button>
-            <form method="dialog">
-              <!-- if there is a button in form, it will close the modal -->
-              <button class="btn">Close</button>
-            </form>
-          </div>
-        </div>
-      </dialog>
+      <FocusItemDialog ref="item-details-dialog" />
     </div>
   </div>
 </template>
