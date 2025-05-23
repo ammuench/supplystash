@@ -4,7 +4,11 @@
   "description": "",
   "scripts": {
     "dev": "pnpm --filter supplystash-web dev",
+    "dev:local": "pnpm --filter supplystash-web dev",
     "dev:server": "pnpm --filter supplystash-server dev",
+    "dev:server:local": "pnpm --filter supplystash-server dev",
+    "dev:server:db:local": "pnpm --filter supplystash-server db:local",
+    "dev:server:db:local:down": "pnpm --filter supplystash-server db:local:down",
     "dev:types": "pnpm --filter @supplystash/types dev",
     "lint:staged": "pnpm lint-staged --concurrent true --relative",
     "prepare": "husky"
@@ -49,10 +53,28 @@
           "dev:server"
         ]
       },
+      "dev:local": {
+        "continuous": true,
+        "dependsOn": [
+          "dev:types",
+          "dev:server:local",
+          "dev:server:db:local"
+        ]
+      },
       "dev:server": {
         "dependsOn": [
           "dev:types"
         ],
+        "continuous": true
+      },
+      "dev:server:local": {
+        "dependsOn": [
+          "dev:types",
+          "dev:server:db:local"
+        ],
+        "continuous": true
+      },
+      "dev:server:db:local": {
         "continuous": true
       },
       "dev:types": {
