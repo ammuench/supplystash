@@ -9,7 +9,7 @@ defineProps<{
   toggleSidebar: () => void;
 }>();
 
-type ColorThemes = "coffee" | "bumblebee";
+type ColorThemes = "elizabeth" | "bumblebee";
 
 const htmlTheme =
   localStorage.getItem("theme")?.trim() ||
