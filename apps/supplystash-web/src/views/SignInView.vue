@@ -1,5 +1,84 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { XCircleIcon } from "@heroicons/vue/24/outline";
+import { ref } from "vue";
+
+// TODO: Create a zod schema for this form
+const email = ref("");
+const password = ref("");
+const isLoading = ref(false);
+const errorMessage = ref("");
+
+const handleSubmit = () => {
+  isLoading.value = true;
+  errorMessage.value = "";
+
+  setTimeout(() => {
+    isLoading.value = false;
+    errorMessage.value = "Invalid credentials";
+  }, 1500);
+};
+</script>
 
 <template>
-  <div class="h-full overflow-y-scroll max-w-screen px-4 py-2">Sign In</div>
+  <div
+    class="h-full overflow-y-scroll max-w-screen px-4 py-2 flex items-center justify-center"
+  >
+    <div
+      class="card w-full max-w-md bg-base-100 shadow-xl border-solid border-1 border-base-300"
+    >
+      <div class="card-body">
+        <h2 class="card-title text-2xl mb-4">Sign In</h2>
+
+        <div
+          v-if="errorMessage"
+          class="alert alert-error mb-4"
+        >
+          <XCircleIcon class="stroke-current shrink-0 h-6 w-6" />
+          <span>{{ errorMessage }}</span>
+        </div>
+
+        <form @submit.prevent="handleSubmit">
+          <div class="form-control w-full mb-4">
+            <label class="label">
+              <span class="label-text">Email</span>
+            </label>
+            <input
+              v-model="email"
+              type="email"
+              placeholder="your@email.com"
+              class="input input-bordered w-full"
+              required
+            />
+          </div>
+
+          <div class="form-control w-full mb-6">
+            <label class="label">
+              <span class="label-text">Password</span>
+            </label>
+            <input
+              v-model="password"
+              type="password"
+              placeholder="••••••••"
+              class="input input-bordered w-full"
+              required
+            />
+          </div>
+
+          <div class="form-control mt-6 text-right">
+            <button
+              type="submit"
+              class="btn btn-primary"
+              :disabled="isLoading"
+            >
+              <span
+                v-if="isLoading"
+                class="loading loading-spinner"
+              ></span>
+              Sign In
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </template>
