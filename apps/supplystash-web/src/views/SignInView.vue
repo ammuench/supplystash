@@ -2,6 +2,8 @@
 import { EyeIcon, EyeSlashIcon, XCircleIcon } from "@heroicons/vue/24/outline";
 import { ref } from "vue";
 
+import DefaultLayout from "@/components/layouts/DefaultLayout.vue";
+
 // TODO: Create a zod schema for this form
 const email = ref("");
 const password = ref("");
@@ -25,9 +27,7 @@ const togglePasswordVisibility = () => {
 </script>
 
 <template>
-  <div
-    class="h-full overflow-y-scroll max-w-screen px-4 py-2 flex flex-col items-center justify-center"
-  >
+  <DefaultLayout class="flex flex-col items-center justify-center">
     <div
       class="card w-full max-w-md bg-base-100 shadow-xl border-solid border-1 border-base-300"
     >
@@ -108,5 +108,5 @@ const togglePasswordVisibility = () => {
         >Sign up instead</RouterLink
       >
     </p>
-  </div>
+  </DefaultLayout>
 </template>

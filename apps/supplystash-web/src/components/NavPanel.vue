@@ -46,7 +46,7 @@ const toggleTheme = () => {
     class="bg-base-300 text-base-content fixed top-0 left-0 z-40 h-dvh -translate-x-full pt-[4.5rem] transition-transform"
     :class="{ 'translate-x-0': showSidebar }"
   >
-    <ul class="menu min-h-full w-80 py-8 px-4">
+    <ul class="menu min-h-full w-80 py-4 px-2">
       <!-- Sidebar content here -->
       <li
         v-for="link in NAV_LINKS"

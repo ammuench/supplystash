@@ -4,6 +4,7 @@ import { useTemplateRef } from "vue";
 
 import FocusItemDialog from "@/components/FocusItemDialog.vue";
 import SupplyItemList from "@/components/SupplyItemList.vue";
+import DefaultLayout from "@/components/layouts/DefaultLayout.vue";
 
 import { useSupplyItemStore } from "@/stores/supplyItem.store";
 
@@ -20,7 +21,7 @@ const togggleFocusItemModal = (item: SupplyItem) => {
 </script>
 
 <template>
-  <div class="h-full overflow-y-scroll max-w-screen px-4 py-2">
+  <DefaultLayout>
     <div class="flex flex-col gap-2 min-h-full pb-64">
       <div v-if="supplyItemStore.isLoading">Loading....</div>
       <SupplyItemList
@@ -36,5 +37,5 @@ const togggleFocusItemModal = (item: SupplyItem) => {
       />
       <FocusItemDialog ref="item-details-dialog" />
     </div>
-  </div>
+  </DefaultLayout>
 </template>
