@@ -29,7 +29,7 @@ const togglePasswordVisibility = () => {
 <template>
   <DefaultLayout class="flex flex-col items-center justify-center">
     <div
-      class="card w-full max-w-md bg-base-100 shadow-xl border-solid border-1 border-base-300"
+      class="card w-full max-w-md bg-base-200 shadow-xl border-solid border-1 border-base-300"
     >
       <div class="card-body">
         <h2 class="card-title text-2xl mb-4">Sign in</h2>

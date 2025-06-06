@@ -60,8 +60,9 @@ const countStatus = computed(() => {
               'badge-error': countStatus === 'error',
               'badge-success': countStatus === 'ok',
             }"
-            >{{ $props.item.currentCount }}</span
           >
+            {{ $props.item.currentCount }}
+          </span>
         </div>
       </div>
     </div>

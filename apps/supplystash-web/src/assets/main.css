@@ -19,11 +19,11 @@
   --color-info: oklch(68% 0.169 237.323);
   --color-info-content: oklch(97% 0.013 236.62);
   --color-success: oklch(76% 0.233 130.85);
-  --color-success-content: oklch(98% 0.031 120.757);
+  --color-success-content: oklch(0.24 0.05 123.71);
   --color-warning: oklch(76% 0.188 70.08);
-  --color-warning-content: oklch(98% 0.022 95.277);
+  --color-warning-content: oklch(0.29 0.05 96.21);
   --color-error: oklch(63% 0.237 25.331);
-  --color-error-content: oklch(97% 0.013 17.38);
+  --color-error-content: oklch(0.16 0.04 21.24);
   --depth: 0;
   --noise: 1;
 }
