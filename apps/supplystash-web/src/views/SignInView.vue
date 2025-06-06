@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { XCircleIcon } from "@heroicons/vue/24/outline";
+import { EyeIcon, EyeSlashIcon, XCircleIcon } from "@heroicons/vue/24/outline";
 import { ref } from "vue";
 
 // TODO: Create a zod schema for this form
@@ -7,6 +7,7 @@ const email = ref("");
 const password = ref("");
 const isLoading = ref(false);
 const errorMessage = ref("");
+const showPassword = ref(false);
 
 const handleSubmit = () => {
   isLoading.value = true;
@@ -16,6 +17,10 @@ const handleSubmit = () => {
     isLoading.value = false;
     errorMessage.value = "Invalid credentials";
   }, 1500);
+};
+
+const togglePasswordVisibility = () => {
+  showPassword.value = !showPassword.value;
 };
 </script>
 
@@ -55,13 +60,29 @@ const handleSubmit = () => {
             <label class="label">
               <span class="label-text">Password</span>
             </label>
-            <input
-              v-model="password"
-              type="password"
-              placeholder="••••••••"
-              class="input input-bordered w-full"
-              required
-            />
+            <div class="relative">
+              <input
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                placeholder="••••••••"
+                class="input input-bordered w-full pr-10"
+                required
+              />
+              <button
+                type="button"
+                class="absolute inset-y-0 right-0 px-3 flex items-center z-10"
+                @click="togglePasswordVisibility"
+              >
+                <EyeIcon
+                  v-if="showPassword"
+                  class="h-5 w-5 text-gray-400"
+                />
+                <EyeSlashIcon
+                  v-else
+                  class="h-5 w-5 text-gray-400"
+                />
+              </button>
+            </div>
           </div>
 
           <div class="form-control mt-6 text-right">

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { XCircleIcon } from "@heroicons/vue/24/outline";
-import { ref } from "vue";
+import { EyeIcon, EyeSlashIcon, XCircleIcon } from "@heroicons/vue/24/outline";
+import { ref, watch } from "vue";
 
 // TODO: Create a zod schema for this form
 const email = ref("");
@@ -9,15 +9,50 @@ const password = ref("");
 const passwordConfirm = ref("");
 const isLoading = ref(false);
 const errorMessage = ref("");
+const usernameError = ref("");
+const passwordMatchError = ref("");
+const showPassword = ref(false);
+
+// TODO: Revisit this and see if we want to keep the immedate reactivity or only have this run on submit
+// Might move this to zod instead
+watch([password, passwordConfirm], () => {
+  if (
+    password.value &&
+    passwordConfirm.value &&
+    password.value !== passwordConfirm.value
+  ) {
+    passwordMatchError.value = "Passwords don't match";
+  } else {
+    passwordMatchError.value = "";
+  }
+});
 
 const handleSubmit = () => {
-  isLoading.value = true;
   errorMessage.value = "";
+  usernameError.value = "";
+  passwordMatchError.value = "";
+
+  if (password.value !== passwordConfirm.value) {
+    passwordMatchError.value = "Passwords don't match";
+    return;
+  }
+
+  isLoading.value = true;
 
   setTimeout(() => {
     isLoading.value = false;
+
+    if (username.value.toLowerCase() === "supplyuser123") {
+      usernameError.value = "Username unavailable";
+      return;
+    }
+
     errorMessage.value = "Invalid credentials";
   }, 1500);
+};
+
+const togglePasswordVisibility = () => {
+  showPassword.value = !showPassword.value;
 };
 </script>
 
@@ -62,34 +97,82 @@ const handleSubmit = () => {
               type="text"
               placeholder="SupplyUser123"
               class="input input-bordered w-full"
+              :class="{ 'input-error': usernameError }"
               required
             />
+            <div
+              v-if="usernameError"
+              class="label"
+            >
+              <span class="label-text text-error">{{ usernameError }}</span>
+            </div>
           </div>
 
           <div class="form-control w-full mb-4">
             <label class="label">
               <span class="label-text">Password</span>
             </label>
-            <input
-              v-model="password"
-              type="password"
-              placeholder="••••••••"
-              class="input input-bordered w-full"
-              required
-            />
+            <div class="relative">
+              <input
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                placeholder="••••••••"
+                class="input input-bordered w-full pr-10"
+                required
+              />
+              <button
+                type="button"
+                class="absolute inset-y-0 right-0 px-3 flex items-center z-10"
+                @click="togglePasswordVisibility"
+              >
+                <EyeIcon
+                  v-if="showPassword"
+                  class="h-5 w-5 text-gray-400"
+                />
+                <EyeSlashIcon
+                  v-else
+                  class="h-5 w-5 text-gray-400"
+                />
+              </button>
+            </div>
           </div>
 
           <div class="form-control w-full mb-6">
             <label class="label">
               <span class="label-text">Confirm password</span>
             </label>
-            <input
-              v-model="passwordConfirm"
-              type="password"
-              placeholder="••••••••"
-              class="input input-bordered w-full"
-              required
-            />
+            <div class="relative">
+              <input
+                v-model="passwordConfirm"
+                :type="showPassword ? 'text' : 'password'"
+                placeholder="••••••••"
+                class="input input-bordered w-full pr-10"
+                :class="{ 'input-error': passwordMatchError }"
+                required
+              />
+              <button
+                type="button"
+                class="absolute inset-y-0 right-0 px-3 flex items-center z-10"
+                @click="togglePasswordVisibility"
+              >
+                <EyeIcon
+                  v-if="showPassword"
+                  class="h-5 w-5 text-gray-400"
+                />
+                <EyeSlashIcon
+                  v-else
+                  class="h-5 w-5 text-gray-400"
+                />
+              </button>
+            </div>
+            <div
+              v-if="passwordMatchError"
+              class="label"
+            >
+              <span class="label-text text-error">{{
+                passwordMatchError
+              }}</span>
+            </div>
           </div>
 
           <div class="form-control mt-6 text-right">
