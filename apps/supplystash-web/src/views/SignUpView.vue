@@ -58,7 +58,7 @@ const togglePasswordVisibility = () => {
 
 <template>
   <div
-    class="h-full overflow-y-scroll max-w-screen px-4 py-2 flex items-center justify-center"
+    class="h-full overflow-y-scroll max-w-screen px-4 py-2 flex flex-col items-center justify-center"
   >
     <div
       class="card w-full max-w-md bg-base-100 shadow-xl border-solid border-1 border-base-300"
@@ -191,5 +191,14 @@ const togglePasswordVisibility = () => {
         </form>
       </div>
     </div>
+    <p class="text-sm mt-8 text-center">
+      Already have an account?
+      <br />
+      <RouterLink
+        to="/sign-in"
+        class="link link-secondary"
+        >Sign in instead</RouterLink
+      >
+    </p>
   </div>
 </template>
