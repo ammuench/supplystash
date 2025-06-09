@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import router from "@/router";
 import { EyeIcon, EyeSlashIcon, XCircleIcon } from "@heroicons/vue/24/outline";
 import { ref } from "vue";
 
 import DefaultLayout from "@/components/layouts/DefaultLayout.vue";
+
+import { useAuthStore } from "@/stores/auth.store";
 
 // TODO: Create a zod schema for this form
 const email = ref("");
@@ -11,14 +14,26 @@ const isLoading = ref(false);
 const errorMessage = ref("");
 const showPassword = ref(false);
 
-const handleSubmit = () => {
-  isLoading.value = true;
-  errorMessage.value = "";
+const authStore = useAuthStore();
 
-  setTimeout(() => {
+const handleSubmit = async () => {
+  try {
+    isLoading.value = true;
+    errorMessage.value = "";
+
+    await authStore.login({
+      email: email.value,
+      password: password.value,
+    });
+
+    router.push({ name: "list" });
+  } catch (error) {
+    if (error instanceof Error) {
+      errorMessage.value = error.message;
+    }
+  } finally {
     isLoading.value = false;
-    errorMessage.value = "Invalid credentials";
-  }, 1500);
+  }
 };
 
 const togglePasswordVisibility = () => {

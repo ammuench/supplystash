@@ -58,7 +58,7 @@ const authStore = useAuthStore();
       </div>
       <div class="navbar-end">
         <button
-          v-if="useAuthStore.isLoggedIn"
+          v-if="authStore.isLoggedIn"
           class="btn btn-ghost btn-circle"
           @click="toggleNotifs"
         >

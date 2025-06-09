@@ -1,3 +1,4 @@
+import router from "@/router";
 import type { Session } from "@supabase/supabase-js";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
@@ -22,5 +23,40 @@ export const useAuthStore = defineStore("auth", () => {
     });
   }
 
-  return { session, loading, isLoggedIn, initialize };
+  async function login({
+    email,
+    password,
+  }: {
+    email: string;
+    password: string;
+  }) {
+    if (!email || !password) {
+      throw new Error("Must provide an email and password");
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    session.value = data.session;
+    return data.session;
+  }
+
+  async function logout() {
+    const { error } = await supabase.auth.signOut();
+    session.value = null;
+
+    if (error) {
+      throw error;
+    }
+
+    router.push({ name: "sign-in", query: { isLogoutEvent: "true" } });
+  }
+
+  return { session, loading, isLoggedIn, initialize, login, logout };
 });

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MoonIcon, SunIcon } from "@heroicons/vue/24/outline";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 import { NAV_LINKS_AUTH, NAV_LINKS_UNAUTH } from "@/constants/NavLinks";
 
@@ -36,7 +36,9 @@ const toggleTheme = () => {
 };
 
 const authStore = useAuthStore();
-const activeLinkSet = authStore.isLoggedIn ? NAV_LINKS_AUTH : NAV_LINKS_UNAUTH;
+const activeLinkSet = computed(() => {
+  return authStore.isLoggedIn ? NAV_LINKS_AUTH : NAV_LINKS_UNAUTH;
+});
 </script>
 
 <template>
@@ -99,6 +101,18 @@ const activeLinkSet = authStore.isLoggedIn ? NAV_LINKS_AUTH : NAV_LINKS_UNAUTH;
           <span class="text-2xl">Theme</span>
         </button>
       </li>
+      <template v-if="authStore.isLoggedIn">
+        <li></li>
+        <li>
+          <button @click="authStore.logout">
+            <SunIcon
+              v-if="!isDarkMode"
+              class="swap-off size-6 fill-current"
+            />
+            <span class="text-2xl">Log out</span>
+          </button>
+        </li>
+      </template>
     </ul>
   </div>
 </template>
