@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { MoonIcon, SunIcon } from "@heroicons/vue/24/outline";
+import {
+  ArrowRightStartOnRectangleIcon,
+  MoonIcon,
+  SunIcon,
+} from "@heroicons/vue/24/outline";
 import { computed, ref } from "vue";
 
 import { NAV_LINKS_AUTH, NAV_LINKS_UNAUTH } from "@/constants/NavLinks";
 
 import { useAuthStore } from "@/stores/auth.store";
 
-defineProps<{
+const props = defineProps<{
   showSidebar: boolean;
   toggleSidebar: () => void;
 }>();
@@ -39,6 +43,13 @@ const authStore = useAuthStore();
 const activeLinkSet = computed(() => {
   return authStore.isLoggedIn ? NAV_LINKS_AUTH : NAV_LINKS_UNAUTH;
 });
+
+const handleLogout = async () => {
+  await authStore.logout();
+  if (props.showSidebar) {
+    props.toggleSidebar();
+  }
+};
 </script>
 
 <template>
@@ -87,13 +98,10 @@ const activeLinkSet = computed(() => {
           data-act-class="ACTIVECLASS"
           @click="toggleTheme"
         >
-          <!-- sun icon -->
           <SunIcon
             v-if="!isDarkMode"
             class="swap-off size-6 fill-current"
           />
-
-          <!-- moon icon -->
           <MoonIcon
             v-if="isDarkMode"
             class="swap-on size-6 fill-current"
@@ -104,10 +112,10 @@ const activeLinkSet = computed(() => {
       <template v-if="authStore.isLoggedIn">
         <li></li>
         <li>
-          <button @click="authStore.logout">
-            <SunIcon
+          <button @click="handleLogout">
+            <ArrowRightStartOnRectangleIcon
               v-if="!isDarkMode"
-              class="swap-off size-6 fill-current"
+              class="size-6"
             />
             <span class="text-2xl">Log out</span>
           </button>

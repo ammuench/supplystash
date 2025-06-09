@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import router from "@/router";
-import { EyeIcon, EyeSlashIcon, XCircleIcon } from "@heroicons/vue/24/outline";
-import { ref } from "vue";
+import {
+  ExclamationTriangleIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  InformationCircleIcon,
+  XCircleIcon,
+} from "@heroicons/vue/24/outline";
+import { computed, ref } from "vue";
+import { useRoute } from "vue-router";
 
 import DefaultLayout from "@/components/layouts/DefaultLayout.vue";
 
@@ -39,10 +46,30 @@ const handleSubmit = async () => {
 const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value;
 };
+
+const route = useRoute();
+const isLogoutEvent = computed(() => !!route.query.isLogoutEvent);
+const isRedirectEvent = computed(() => !!route.query.fromRedirect);
 </script>
 
 <template>
   <DefaultLayout class="flex flex-col items-center justify-center">
+    <div
+      v-if="isLogoutEvent"
+      role="alert"
+      class="alert alert-info w-full max-w-md mb-8"
+    >
+      <InformationCircleIcon class="stroke-current shrink-0 h-6 w-6" />
+      <span> You have been successfully logged out</span>
+    </div>
+    <div
+      v-if="isRedirectEvent"
+      role="alert"
+      class="alert alert-warning w-full max-w-md mb-8"
+    >
+      <ExclamationTriangleIcon class="stroke-current shrink-0 h-6 w-6" />
+      <span>You must be logged-in to view that page</span>
+    </div>
     <div
       class="card w-full max-w-md bg-base-200 shadow-xl border-solid border-1 border-base-300"
     >
