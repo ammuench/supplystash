@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
+    "@supabase/realtime-js": "^2.11.8",
+    "@supabase/supabase-js": "^2.49.7",
     "@supplystash/types": "workspace:*",
     "@tailwindcss/vite": "^4.1.5",
     "@vueuse/core": "^13.2.0",

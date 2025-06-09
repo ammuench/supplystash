@@ -1,16 +1,23 @@
 import { createPinia } from "pinia";
 import { createApp } from "vue";
 
+import { useAuthStore } from "@/stores/auth.store";
+
 import App from "./App.vue";
 import "./assets/main.css";
 import router from "./router";
 
-const app = createApp(App);
+async function init() {
+  const app = createApp(App);
+  const pinia = createPinia();
 
-// TODO: Remove this after we get all the env junk sorted out
-console.log("Supabase Check:", import.meta.env.VITE_SUPABASE_URL);
+  app.use(pinia);
+  app.use(router);
 
-app.use(createPinia());
-app.use(router);
+  const authStore = useAuthStore();
+  await authStore.initialize();
 
-app.mount("#app");
+  app.mount("#app");
+}
+
+init();

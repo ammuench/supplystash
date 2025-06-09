@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
+import { useAuthStore } from "@/stores/auth.store";
+
 import NavPanel from "./NavPanel.vue";
 import NotificationsPanel from "./NotificationsPanel.vue";
 
@@ -18,6 +20,8 @@ const toggleNotifs = () => {
   }
   showNotifs.value = !showNotifs.value;
 };
+
+const authStore = useAuthStore();
 </script>
 <template>
   <div
@@ -54,6 +58,7 @@ const toggleNotifs = () => {
       </div>
       <div class="navbar-end">
         <button
+          v-if="useAuthStore.isLoggedIn"
           class="btn btn-ghost btn-circle"
           @click="toggleNotifs"
         >

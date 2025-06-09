@@ -2,7 +2,9 @@
 import { MoonIcon, SunIcon } from "@heroicons/vue/24/outline";
 import { ref } from "vue";
 
-import { NAV_LINKS } from "@/constants/NavLinks";
+import { NAV_LINKS_AUTH, NAV_LINKS_UNAUTH } from "@/constants/NavLinks";
+
+import { useAuthStore } from "@/stores/auth.store";
 
 defineProps<{
   showSidebar: boolean;
@@ -32,6 +34,9 @@ if (
 const toggleTheme = () => {
   isDarkMode.value = !isDarkMode.value;
 };
+
+const authStore = useAuthStore();
+const activeLinkSet = authStore.isLoggedIn ? NAV_LINKS_AUTH : NAV_LINKS_UNAUTH;
 </script>
 
 <template>
@@ -49,7 +54,7 @@ const toggleTheme = () => {
     <ul class="menu min-h-full w-80 py-4 px-2">
       <!-- Sidebar content here -->
       <li
-        v-for="link in NAV_LINKS"
+        v-for="link in activeLinkSet"
         :key="link.link"
       >
         <RouterLink
