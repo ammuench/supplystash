@@ -6,6 +6,7 @@
     "dev:local": "tsx watch src/index.ts",
     "db:local": "docker compose -f docker/docker-compose.yml up",
     "db:local:down": "docker compose -f docker/docker-compose.yml down",
+    "db:generate": "drizzle-kit generate:pg",
     "build": "tsc",
     "start": "node dist/index.js",
     "format": "prettier --write"
@@ -14,12 +15,16 @@
     "@anatine/zod-mock": "^3.14.0",
     "@hono/node-server": "^1.14.1",
     "@supplystash/types": "workspace:*",
-    "hono": "^4.7.8"
+    "dotenv": "^16.5.0",
+    "drizzle-orm": "^0.44.2",
+    "hono": "^4.7.8",
+    "postgres": "^3.4.7"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.8.0",
     "@supplystash/prettier-config": "workspace:*",
     "@types/node": "^20.11.17",
+    "drizzle-kit": "^0.31.1",
     "tsx": "^4.7.1",
     "typescript": "^5.8.3"
   }

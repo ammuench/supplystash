@@ -113,10 +113,7 @@ const handleLogout = async () => {
         <li></li>
         <li>
           <button @click="handleLogout">
-            <ArrowRightStartOnRectangleIcon
-              v-if="!isDarkMode"
-              class="size-6"
-            />
+            <ArrowRightStartOnRectangleIcon class="size-6" />
             <span class="text-2xl">Log out</span>
           </button>
         </li>
