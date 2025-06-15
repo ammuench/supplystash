@@ -15,6 +15,4 @@ const client = postgres(process.env.DATABASE_URL!, {
   database: "postgres",
 });
 
-console.log("ENV CHECK", process.env.SUPABASE_URL);
-
 export const db = drizzle({ client, schema });

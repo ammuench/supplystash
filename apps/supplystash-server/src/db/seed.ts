@@ -1,84 +1,98 @@
 import { faker } from "@faker-js/faker";
+import * as dotenv from "dotenv";
 import { randomUUID as uuidv4 } from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { db } from ".";
-import { homes, items, userHomes, users } from "./schema";
+import { homes, items, user_homes, users } from "./schema";
 
 const seed = async () => {
   console.log("Starting database seeding...");
 
+  const dirname = path.dirname(fileURLToPath(import.meta.url));
+
+  dotenv.config({ path: path.resolve(dirname, "../../../../.env.local") });
+
+  if (!process.env.SEED_ACCOUNT_ID) {
+    console.warn(
+      "ERR: Need seed account ID to properly map data to existing account"
+    );
+    return;
+  }
+
   try {
     // --- 1. Create a Mock User ---
-    const mockUser = {
-      id: uuidv4(),
+    const mock_user = {
+      id: process.env.SEED_ACCOUNT_ID,
       email: faker.internet.email(),
       username: faker.internet.userName(),
-      firstName: faker.person.firstName(),
-      lastName: faker.person.lastName(),
-      profileImageUrl: faker.image.avatar(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      first_name: faker.person.firstName(),
+      last_name: faker.person.lastName(),
+      profile_image_url: faker.image.avatar(),
+      created_at: new Date(),
+      updated_at: new Date(),
     };
 
-    console.log(`Creating user: ${mockUser.email}`);
-    await db.insert(users).values(mockUser);
+    console.log(`Creating user: ${mock_user.email}`);
+    await db.insert(users).values(mock_user);
 
     // --- 2. Create a Mock Home for the User ---
-    const mockHome = {
+    const mock_home = {
       id: uuidv4(), // Generate a UUID for the home
       name: faker.company.buzzPhrase(), // A catchy name for the home
       description: faker.lorem.sentence(),
-      createdById: mockUser.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      created_by_id: mock_user.id,
+      created_at: new Date(),
+      updated_at: new Date(),
     };
 
-    console.log(`Creating home: ${mockHome.name}`);
-    await db.insert(homes).values(mockHome);
+    console.log(`Creating home: ${mock_home.name}`);
+    await db.insert(homes).values(mock_home);
 
     // --- 3. Link the User to the Home with 'owner' role ---
-    const mockUserHome = {
-      userId: mockUser.id,
-      homeId: mockHome.id,
+    const mock_user_home = {
+      user_id: mock_user.id,
+      home_id: mock_home.id,
       role: "owner",
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      created_at: new Date(),
+      updated_at: new Date(),
     };
 
     console.log(
-      `Linking user ${mockUser.username} to home ${mockHome.name} as owner`
+      `Linking user ${mock_user.username} to home ${mock_home.name} as owner`
     );
-    await db.insert(userHomes).values(mockUserHome);
+    await db.insert(user_homes).values(mock_user_home);
 
     // --- 4. Create Ten Mock Supply Items for the Home ---
-    const mockItems = [];
+    const mock_items = [];
     for (let i = 0; i < 10; i++) {
-      const itemName = faker.commerce.productName();
-      mockItems.push({
+      const item_name = faker.commerce.productName();
+      mock_items.push({
         id: uuidv4(),
-        homeId: mockHome.id,
-        title: itemName,
+        home_id: mock_home.id,
+        title: item_name,
         description: faker.commerce.productDescription(),
-        photoUrl: faker.image.urlLoremFlickr({
+        photo_url: faker.image.urlLoremFlickr({
           category: "food",
           width: 640,
           height: 480,
         }),
-        purchaseLink: faker.internet.url(),
-        currentInventory: faker.number.int({ min: 1, max: 20 }),
-        warningAmount: faker.number.int({ min: 0, max: 5 }),
-        isArchived: false,
-        createdById: mockUser.id,
-        lastUpdatedById: mockUser.id,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        purchase_link: faker.internet.url(),
+        current_inventory: faker.number.int({ min: 1, max: 20 }),
+        warning_amount: faker.number.int({ min: 0, max: 5 }),
+        is_archived: false,
+        created_by_id: mock_user.id,
+        last_updated_by_id: mock_user.id,
+        created_at: new Date(),
+        updated_at: new Date(),
       });
     }
 
     console.log(
-      `Creating ${mockItems.length} mock items for home ${mockHome.name}`
+      `Creating ${mock_items.length} mock items for home ${mock_home.name}`
     );
-    await db.insert(items).values(mockItems);
+    await db.insert(items).values(mock_items);
 
     console.log("Database seeding completed successfully!");
   } catch (error) {
