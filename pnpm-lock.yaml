@@ -87,6 +87,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.14.1
         version: 1.14.1(hono@4.7.8)
+      '@supabase/supabase-js':
+        specifier: ^2.49.7
+        version: 2.49.7
       '@supplystash/types':
         specifier: workspace:*
         version: link:../../packages/types

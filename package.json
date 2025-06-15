@@ -8,7 +8,7 @@
     "dev:server": "pnpm --filter supplystash-server dev",
     "dev:server:local": "pnpm --filter supplystash-server dev",
     "dev:server:db:local": "pnpm --filter supplystash-server db:local",
-    "dev:server:db:local:down": "pnpm --filter supplystash-server db:local:down",
+    "dev:local:down": "pnpm --filter supplystash-server db:local:down",
     "dev:types": "pnpm --filter @supplystash/types dev",
     "lint:staged": "pnpm lint-staged --concurrent true --relative",
     "prepare": "husky"
