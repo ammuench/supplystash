@@ -1,38 +1,16 @@
-import { type SupplyItem, supplyItemSchema } from "@supplystash/types";
+import {
+  type SupplyItem,
+  type SupplyItemInsert,
+  supplyItemSchema,
+} from "@supplystash/types";
 import { Hono } from "hono";
 import { randomUUID } from "node:crypto";
 
-import { generateMockItems } from "@/utils/mocks/generateMockItems.js";
-
-// FIXME: Remove when we have a database
-type MockItemsDatabase = {
-  items: SupplyItem[];
-};
-const itemsDatabase: MockItemsDatabase = {
-  items: generateMockItems(10),
-};
-
 const items = new Hono();
 
-// GET ITEM(S)
-items.get("/items", (c) => {
-  return c.json(itemsDatabase);
-});
-items.get("/items/:id", (c) => {
-  const matchedItem = itemsDatabase.items.find(
-    (item) => item.id === c.req.param("id")
-  );
-  if (matchedItem) {
-    return c.json(matchedItem);
-  }
-
-  return c.json({ message: "No item with that ID" }, 404);
-});
-
 // ADD ITEM
-type NewSupplyItemRequest = Omit<SupplyItem, "id">;
 items.post("/items", async (c) => {
-  const newItem = await c.req.json<NewSupplyItemRequest>();
+  const newItem = await c.req.json<SupplyItemInsert>();
 
   const { success, data } = supplyItemSchema.safeParse({
     id: randomUUID(),
