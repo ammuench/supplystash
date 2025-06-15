@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SupplyItem } from "@supplystash/types";
-import { useTemplateRef } from "vue";
+import { onMounted, useTemplateRef } from "vue";
 
 import FocusItemDialog from "@/components/FocusItemDialog.vue";
 import SupplyItemList from "@/components/SupplyItemList.vue";

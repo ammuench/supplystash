@@ -10,7 +10,7 @@ const focusDialog = useTemplateRef("focus-item-details-dialog");
 
 const showModal = () => {
   if (supplyItemStore.focusedItem) {
-    countValue.value = supplyItemStore.focusedItem.currentCount;
+    countValue.value = supplyItemStore.focusedItem.current_inventory;
   }
   focusDialog.value?.showModal();
 };
@@ -69,8 +69,8 @@ defineExpose({
               class="size-16 bg-secondary rounded-lg overflow-hidden flex items-center justify-center"
             >
               <img
-                v-if="supplyItemStore.focusedItem.imageUrl"
-                :src="supplyItemStore.focusedItem.imageUrl"
+                v-if="supplyItemStore.focusedItem.photo_url"
+                :src="supplyItemStore.focusedItem.photo_url"
                 width="128"
                 height="128"
               />
@@ -83,7 +83,7 @@ defineExpose({
 
           <div class="text-left">
             <h3 class="text-lg font-bold">
-              {{ supplyItemStore.focusedItem.name }}
+              {{ supplyItemStore.focusedItem.title }}
             </h3>
             <p
               v-if="supplyItemStore.focusedItem.description"

@@ -2,6 +2,8 @@ import type { SupplyItem } from "@supplystash/types";
 import { defineStore } from "pinia";
 import { ref } from "vue";
 
+import { getItems } from "@/services/getItems.service";
+
 export const useSupplyItemStore = defineStore("supplyItem", () => {
   const items = ref<SupplyItem[]>([]);
   const focusedItem = ref<SupplyItem | null>(null);
@@ -19,12 +21,8 @@ export const useSupplyItemStore = defineStore("supplyItem", () => {
     error.value = null;
 
     try {
-      const response = await fetch("http://localhost:3000/items");
-      if (!response.ok) {
-        throw new Error("Failed to fetch items");
-      }
-      const responseJSON: { items: SupplyItem[] } = await response.json();
-      items.value = responseJSON.items;
+      const response = await getItems();
+      items.value = response;
       // TODO: Make sure this is fine...
       focusedItem.value = null;
     } catch (err) {

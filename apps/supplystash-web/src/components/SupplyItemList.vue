@@ -9,9 +9,9 @@ const props = defineProps<{
 }>();
 
 const countStatus = computed(() => {
-  if (props.item.currentCount === props.item.warnCount) {
+  if (props.item.current_inventory === props.item.warning_amount) {
     return "warn" as const;
-  } else if (props.item.currentCount < props.item.warnCount) {
+  } else if (props.item.current_inventory < props.item.warning_amount) {
     return "error" as const;
   } else {
     return "ok" as const;
@@ -33,8 +33,8 @@ const countStatus = computed(() => {
           class="size-12 bg-secondary rounded-lg overflow-hidden flex items-center justify-center"
         >
           <img
-            v-if="$props.item.imageUrl"
-            :src="$props.item.imageUrl"
+            v-if="$props.item.photo_url"
+            :src="$props.item.photo_url"
             width="48"
             height="48"
           />
@@ -44,7 +44,7 @@ const countStatus = computed(() => {
           />
         </div>
         <div class="flex-1 min-w-0">
-          <h2 class="font-bold truncate text-left">{{ $props.item.name }}</h2>
+          <h2 class="font-bold truncate text-left">{{ $props.item.title }}</h2>
           <p
             v-if="$props.item.description"
             class="truncate text-sm text-left"
@@ -61,7 +61,7 @@ const countStatus = computed(() => {
               'badge-success': countStatus === 'ok',
             }"
           >
-            {{ $props.item.currentCount }}
+            {{ $props.item.current_inventory }}
           </span>
         </div>
       </div>
