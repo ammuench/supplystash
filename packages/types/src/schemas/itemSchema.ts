@@ -11,3 +11,4 @@ export const supplyItemInsertSchema = createInsertSchema(items);
 export const supplyItemUpdateSchema = createUpdateSchema(items);
 
 export type SupplyItem = typeof items.$inferSelect;
+export type SupplyItemInsert = typeof items.$inferInsert;

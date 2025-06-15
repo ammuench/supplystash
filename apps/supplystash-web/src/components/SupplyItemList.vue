@@ -20,7 +20,7 @@ const countStatus = computed(() => {
 </script>
 <template>
   <button
-    class="card card-border bg-base-300"
+    class="card card-border bg-base-300 cursor-pointer"
     @click="
       () => {
         $props.onSelect($props.item);
