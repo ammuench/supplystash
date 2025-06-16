@@ -4,9 +4,12 @@ import { computed, ref, useTemplateRef } from "vue";
 
 import { useItemAmountUpdater } from "@/composables/useItemAmountUpdater";
 
+import { useToastsStore } from "@/stores/toasts.store";
+
 import { useSupplyItemStore } from "../stores/supplyItem.store";
 
 const supplyItemStore = useSupplyItemStore();
+const { createToast } = useToastsStore();
 
 const focusDialog = useTemplateRef("focus-item-details-dialog");
 
@@ -34,9 +37,16 @@ const dismissModal = () => {
 const countValue = ref<number>(0);
 
 const { updateItem, isLoading, error: updateError } = useItemAmountUpdater();
-const handleUpdateItem = () => {
+const handleUpdateItem = async () => {
   if (focusedItem.value) {
-    updateItem(focusedItem.value.id, countValue.value);
+    await updateItem(focusedItem.value.id, countValue.value);
+    dismissModal();
+    createToast({
+      dismissable: true,
+      duration: 1500,
+      message: `Updated ${focusedItem.value.title} count`,
+      status: "success",
+    });
   }
 };
 
@@ -112,7 +122,7 @@ defineExpose({
             @input="
               (event) => {
                 event.preventDefault();
-                updateCount((event.target as HTMLInputElement).value);
+                countValue = parseInt((event.target as HTMLInputElement).value);
               }
             "
           />
