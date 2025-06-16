@@ -6,6 +6,9 @@ export const API_ROUTES = {
     update: (itemId: string) => `${baseApiUrl}/items/${itemId}`,
     delete: (itemId: string) => `${baseApiUrl}/items/${itemId}`,
   },
+  itemsAmount: {
+    update: (itemId: string) => `${baseApiUrl}/items/${itemId}/amount`,
+  },
   homes: {
     create: `${baseApiUrl}/homes`,
     update: (homeId: string) => `${baseApiUrl}/homes/${homeId}`,

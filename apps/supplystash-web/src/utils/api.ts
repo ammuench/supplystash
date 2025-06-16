@@ -17,8 +17,11 @@ export const authorizedFetch = async <T>(
     headers.set("Authorization", `Bearer ${session.access_token}`);
   }
 
+  // Normalize method to uppercase so it matches the server’s CORS allowMethods
+  const method = (options.method ?? "GET").toString().toUpperCase();
   const fetchOptions: RequestInit = {
     ...options,
+    method,
     headers,
   };
 

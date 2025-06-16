@@ -14,7 +14,10 @@ export default {
   ],
   importOrder: [
     "^@/components/(.*)$",
+    "^@/composables/(.*)$",
     "^@/constants/(.*)$",
+    "^@/db/(.*)$",
+    "^@/middleware/(.*)$",
     "^@/routes/(.*)$",
     "^@/services/(.*)$",
     "^@/stores/(.*)$",

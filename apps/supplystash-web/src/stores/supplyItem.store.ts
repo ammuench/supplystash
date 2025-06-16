@@ -6,13 +6,13 @@ import { getItems } from "@/services/getItems.service";
 
 export const useSupplyItemStore = defineStore("supplyItem", () => {
   const items = ref<SupplyItem[]>([]);
-  const focusedItem = ref<SupplyItem | null>(null);
+  const focusedItem = ref<string | null>(null);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
   const setFocusedItem = (focusItem: SupplyItem | undefined | null) => {
     if (focusItem) {
-      focusedItem.value = focusItem;
+      focusedItem.value = focusItem.id;
     }
   };
 

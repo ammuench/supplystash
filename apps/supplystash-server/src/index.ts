@@ -15,13 +15,7 @@ dotenv.config({ path: path.resolve(dirname, "../../../../.env.local") });
 
 const app = new Hono();
 app.use(cors());
-app.use(
-  "*",
-  supabaseAuthMiddleware({
-    supabaseAnonKey: process.env.VITE_SUPABASE_ANON_KEY,
-    supabaseUrl: process.env.VITE_SUPABASE_URL,
-  })
-);
+app.use("*", supabaseAuthMiddleware());
 app.route("/", ItemsRouter);
 
 serve(
