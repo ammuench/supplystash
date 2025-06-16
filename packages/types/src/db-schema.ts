@@ -14,11 +14,6 @@ import {
 
 import { SUPPLY_ITEM_UPDATE_ACTION } from "./schemas/itemUpdateSchema";
 
-export const inventoryTransactionAction = pgEnum(
-  "inventory_transaction_type",
-  SUPPLY_ITEM_UPDATE_ACTION
-);
-
 // Users Table
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -105,6 +100,12 @@ export const item_categories = pgTable(
       .references(() => categories.id, { onDelete: "cascade" }),
   },
   (t) => [primaryKey({ columns: [t.item_id, t.category_id] })]
+);
+
+// Enum for inventory transaction types
+const inventoryTransactionAction = pgEnum(
+  "inventory_transaction_type",
+  SUPPLY_ITEM_UPDATE_ACTION
 );
 
 // InventoryTransactions Table (Ledger for inventory changes)

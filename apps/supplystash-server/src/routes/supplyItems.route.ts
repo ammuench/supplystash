@@ -10,6 +10,8 @@ import { inventory_transactions, items } from "@supplystash/types/db";
 import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
+import { getUserHomeIds } from "@/utils/permissions";
+
 const itemsRoutes = new Hono();
 
 // ADD ITEM
@@ -30,9 +32,27 @@ itemsRoutes.post("/items", async (c) => {
   const { success, data } = supplyItemInsertSchema.safeParse(insertItem);
 
   if (success) {
+    // ensure user belongs to the target home
+    const allowedHomes = await getUserHomeIds(authUser.id);
+    if (!allowedHomes.includes(data.home_id)) {
+      return c.json(
+        { message: "Forbidden: cannot add items to that home." },
+        403
+      );
+    }
     try {
-      const result = await db.insert(items).values(data).returning();
-      return c.json(result[0], 200);
+      const createdItem = await db.transaction(async (tx) => {
+        const inserted = await tx.insert(items).values(data).returning();
+        const newItemRecord = inserted[0];
+        await tx.insert(inventory_transactions).values({
+          item_id: newItemRecord.id,
+          user_id: authUser.id,
+          quantity_changed: data.current_inventory || 0,
+          transaction_type: "create_item",
+        });
+        return newItemRecord;
+      });
+      return c.json(createdItem, 200);
     } catch (e) {
       return c.json({ message: "Error inserting data", error: e }, 500);
     }
@@ -42,8 +62,8 @@ itemsRoutes.post("/items", async (c) => {
   return c.json({ message: "Invalid data format" }, 400);
 });
 
-// UPDATE ITEM
-itemsRoutes.patch("/items/:id", async (c) => {
+// UPDATE ITEM AMOUNT
+itemsRoutes.patch("/items/:id/amount", async (c) => {
   const authUser = c.get("authUser");
   if (!authUser) {
     return c.json({ message: "Unauthorized request" }, 401);
@@ -84,7 +104,7 @@ itemsRoutes.patch("/items/:id", async (c) => {
             .returning();
           break;
       }
-      const updated = itemUpdateRows[0];
+      const updated = itemUpdateRows?.at(0);
       const changeAmount = data.amount;
       await tx.insert(inventory_transactions).values({
         item_id: updateId,

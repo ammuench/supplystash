@@ -1,0 +1,25 @@
+meta {
+  name: Update Item Amount
+  type: http
+  seq: 6
+}
+
+patch {
+  url: http://localhost:3000/items/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: dd600fda-48dc-403b-b8cc-0edbb7908227
+}
+
+headers {
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmMTc0YzYzYS1lNDBhLTQ4NTktOTVlYy1kZjIyZmZmMTI3YWEiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzUwMDkxMjg5LCJpYXQiOjE3NTAwODc2ODksImVtYWlsIjoidGVzdEBhbGV4bXVlbi5jaCIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWxfdmVyaWZpZWQiOnRydWV9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzUwMDE4MDIyfV0sInNlc3Npb25faWQiOiJjOWYyNjkwNy1mNWQ2LTQ5NDEtYTE0Mi04MjYzOTgwMTQ0ZWUiLCJpc19hbm9ueW1vdXMiOmZhbHNlfQ.5lHs5YT0c0QCmGS6_aJJohV1A6_0dE9L29xbZsBMong
+}
+
+body:json {
+  {
+    "name": "New Test Name"
+  }
+}
