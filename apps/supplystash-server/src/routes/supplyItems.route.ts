@@ -2,9 +2,12 @@ import { db } from "@/db";
 import {
   type SupplyItemCreatePayload,
   type SupplyItemInsertPayload,
+  type SupplyItemUpdatePayload,
   supplyItemInsertSchema,
+  supplyItemUpdateSchema,
 } from "@supplystash/types";
 import { items } from "@supplystash/types/db";
+import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
 const itemsRoutes = new Hono();
@@ -39,30 +42,50 @@ itemsRoutes.post("/items", async (c) => {
   return c.json({ message: "Invalid data format" }, 400);
 });
 
-// // UPDATE ITEM
-// items.patch("/items/:id", async (c) => {
-//   const updateId = c.req.param("id");
-//   const updateIdx = itemsDatabase.items.findIndex(
-//     (item) => item.id === updateId
-//   );
-//
-//   if (updateIdx === -1) {
-//     return c.json({ message: "No item with that ID" }, 404);
-//   }
-//
-//   const updatedItem = await c.req.json<Partial<SupplyItem>>();
-//   const { success, data } = supplyItemSchema.safeParse({
-//     ...itemsDatabase.items[updateIdx],
-//     ...updatedItem,
-//   });
-//   if (success) {
-//     itemsDatabase.items = itemsDatabase.items.toSpliced(updateIdx, 1, data);
-//     return c.json(itemsDatabase);
-//   }
-//
-//   // TODO: Add error messaging?
-//   return c.json({ message: "Invalid data format" }, 400);
-// });
+// UPDATE ITEM
+itemsRoutes.patch("/items/:id", async (c) => {
+  const updateId = c.req.param("id");
+  const updatePayload = await c.req.json<SupplyItemUpdatePayload>();
+
+  const { success, data } = supplyItemUpdateSchema.safeParse(updatePayload);
+
+  if (success) {
+    const updatedItem = await db.transaction(async (tx) => {
+      let itemUpdate;
+      switch (data.action) {
+        case "set_amt":
+          itemUpdate = await tx
+            .update(items)
+            .set({ current_inventory: data.amount })
+            .where(eq(items.id, updateId))
+            .returning();
+          break;
+        case "increase_amt":
+          itemUpdate = await tx
+            .update(items)
+            .set({
+              current_inventory: sql`${items.current_inventory} + ${data.amount}`,
+            })
+            .where(eq(items.id, updateId))
+            .returning();
+          break;
+        case "decrease_amt":
+          itemUpdate = await tx
+            .update(items)
+            .set({
+              current_inventory: sql`${items.current_inventory} - ${data.amount}`,
+            })
+            .where(eq(items.id, updateId))
+            .returning();
+          break;
+      }
+      return itemUpdate[0];
+    });
+  }
+
+  // TODO: Add error messaging?
+  return c.json({ message: "Invalid data format" }, 400);
+});
 //
 // // DELETE ITEM
 // items.delete("/items/:id", (c) => {

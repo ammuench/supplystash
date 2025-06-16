@@ -21,5 +21,3 @@ export type SupplyItemCreatePayload = Omit<
 
 export const supplyItemInsertSchema = createInsertSchema(items);
 export type SupplyItemInsertPayload = typeof items.$inferInsert;
-
-export const supplyItemUpdateSchema = createUpdateSchema(items);
