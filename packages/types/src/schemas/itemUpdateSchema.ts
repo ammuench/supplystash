@@ -4,6 +4,7 @@ export const SUPPLY_ITEM_UPDATE_ACTION = [
   "decrease_amt",
   "increase_amt",
   "set_amt",
+  "create_item",
 ] as const;
 export type SupplyItemUpdateAction = (typeof SUPPLY_ITEM_UPDATE_ACTION)[number];
 

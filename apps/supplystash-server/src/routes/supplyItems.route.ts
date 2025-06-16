@@ -6,7 +6,7 @@ import {
   supplyItemInsertSchema,
   supplyItemUpdateSchema,
 } from "@supplystash/types";
-import { items } from "@supplystash/types/db";
+import { inventory_transactions, items } from "@supplystash/types/db";
 import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
@@ -44,24 +44,29 @@ itemsRoutes.post("/items", async (c) => {
 
 // UPDATE ITEM
 itemsRoutes.patch("/items/:id", async (c) => {
+  const authUser = c.get("authUser");
+  if (!authUser) {
+    return c.json({ message: "Unauthorized request" }, 401);
+  }
   const updateId = c.req.param("id");
   const updatePayload = await c.req.json<SupplyItemUpdatePayload>();
-
   const { success, data } = supplyItemUpdateSchema.safeParse(updatePayload);
-
-  if (success) {
+  if (!success) {
+    return c.json({ message: "Invalid data format" }, 400);
+  }
+  try {
     const updatedItem = await db.transaction(async (tx) => {
-      let itemUpdate;
+      let itemUpdateRows;
       switch (data.action) {
         case "set_amt":
-          itemUpdate = await tx
+          itemUpdateRows = await tx
             .update(items)
             .set({ current_inventory: data.amount })
             .where(eq(items.id, updateId))
             .returning();
           break;
         case "increase_amt":
-          itemUpdate = await tx
+          itemUpdateRows = await tx
             .update(items)
             .set({
               current_inventory: sql`${items.current_inventory} + ${data.amount}`,
@@ -70,7 +75,7 @@ itemsRoutes.patch("/items/:id", async (c) => {
             .returning();
           break;
         case "decrease_amt":
-          itemUpdate = await tx
+          itemUpdateRows = await tx
             .update(items)
             .set({
               current_inventory: sql`${items.current_inventory} - ${data.amount}`,
@@ -79,12 +84,20 @@ itemsRoutes.patch("/items/:id", async (c) => {
             .returning();
           break;
       }
-      return itemUpdate[0];
+      const updated = itemUpdateRows[0];
+      const changeAmount = data.amount;
+      await tx.insert(inventory_transactions).values({
+        item_id: updateId,
+        user_id: authUser.id,
+        quantity_changed: changeAmount,
+        transaction_type: data.action,
+      });
+      return updated;
     });
+    return c.json(updatedItem, 200);
+  } catch (e) {
+    return c.json({ message: "Error updating item", error: e }, 500);
   }
-
-  // TODO: Add error messaging?
-  return c.json({ message: "Invalid data format" }, 400);
 });
 //
 // // DELETE ITEM

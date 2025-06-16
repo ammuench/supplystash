@@ -3,6 +3,7 @@ import {
   boolean,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -10,6 +11,13 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+
+import { SUPPLY_ITEM_UPDATE_ACTION } from "./schemas/itemUpdateSchema";
+
+export const inventoryTransactionAction = pgEnum(
+  "inventory_transaction_type",
+  SUPPLY_ITEM_UPDATE_ACTION
+);
 
 // Users Table
 export const users = pgTable("users", {
@@ -109,7 +117,7 @@ export const inventory_transactions = pgTable("inventory_transactions", {
     .notNull()
     .references(() => users.id, { onDelete: "restrict" }),
   quantity_changed: integer("quantity_changed").notNull(),
-  transaction_type: varchar("transaction_type", { length: 50 }).notNull(),
+  transaction_type: inventoryTransactionAction("transaction_type").notNull(),
   notes: text("notes"),
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
