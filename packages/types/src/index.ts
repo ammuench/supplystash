@@ -1,3 +1,4 @@
+export * from "./db-schema";
 export * from "./schemas/categorySchema";
 export * from "./schemas/itemSchema";
 export * from "./schemas/itemUpdateSchema";

@@ -22,13 +22,18 @@
   ],
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
     "./package.json": "./package.json",
     ".": {
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     },
     "./db": {
-      "import": "./dist/db-schema.js"
+      "import": "./dist/db-schema.js",
+      "require": "./dist/db-schema.js",
+      "types": "./dist/db-schema.d.ts"
     }
   },
   "devDependencies": {
