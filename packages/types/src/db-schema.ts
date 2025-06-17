@@ -1,9 +1,11 @@
 import { relations } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
   boolean,
   integer,
   jsonb,
   pgEnum,
+  pgPolicy,
   pgTable,
   primaryKey,
   text,
@@ -11,6 +13,7 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import { authenticatedRole } from "drizzle-orm/supabase";
 
 import { SUPPLY_ITEM_UPDATE_ACTION } from "./schemas/itemUpdateSchema";
 
@@ -28,16 +31,31 @@ export const users = pgTable("users", {
 });
 
 // Homes Table
-export const homes = pgTable("homes", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  created_at: timestamp("created_at").defaultNow().notNull(),
-  updated_at: timestamp("updated_at").defaultNow().notNull(),
-  created_by_id: uuid("created_by_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-});
+export const homes = pgTable(
+  "homes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
+    created_by_id: uuid("created_by_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    pgPolicy("homes_select_member", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`
+        EXISTS(
+          SELECT 1 FROM user_homes uh
+           WHERE uh.home_id = ${t.id} AND uh.user_id = auth.uid()
+        )
+      `,
+    }),
+  ]
+);
 
 // UserHomes (Junction Table for Many-to-Many User-Home relationship)
 export const user_homes = pgTable(
@@ -53,7 +71,14 @@ export const user_homes = pgTable(
     created_at: timestamp("created_at").defaultNow().notNull(),
     updated_at: timestamp("updated_at").defaultNow().notNull(),
   },
-  (t) => [primaryKey({ columns: [t.user_id, t.home_id] })]
+  (t) => [
+    primaryKey({ columns: [t.user_id, t.home_id] }),
+    pgPolicy("user_homes_select_self", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`${t.user_id} = auth.uid()`,
+    }),
+  ]
 );
 
 // Categories Table
@@ -66,27 +91,42 @@ export const categories = pgTable("categories", {
 });
 
 // Items Table
-export const items = pgTable("items", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  home_id: uuid("home_id")
-    .notNull()
-    .references(() => homes.id, { onDelete: "cascade" }),
-  title: varchar("title", { length: 255 }).notNull(),
-  description: text("description"),
-  photo_url: text("photo_url"),
-  purchase_link: text("purchase_link"),
-  current_inventory: integer("current_inventory").notNull().default(0),
-  warning_amount: integer("warning_amount").notNull().default(0),
-  is_archived: boolean("is_archived").notNull().default(false),
-  created_at: timestamp("created_at").defaultNow().notNull(),
-  updated_at: timestamp("updated_at").defaultNow().notNull(),
-  created_by_id: uuid("created_by_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "restrict" }),
-  last_updated_by_id: uuid("last_updated_by_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "restrict" }),
-});
+export const items = pgTable(
+  "items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    home_id: uuid("home_id")
+      .notNull()
+      .references(() => homes.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    photo_url: text("photo_url"),
+    purchase_link: text("purchase_link"),
+    current_inventory: integer("current_inventory").notNull().default(0),
+    warning_amount: integer("warning_amount").notNull().default(0),
+    is_archived: boolean("is_archived").notNull().default(false),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+    updated_at: timestamp("updated_at").defaultNow().notNull(),
+    created_by_id: uuid("created_by_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    last_updated_by_id: uuid("last_updated_by_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+  },
+  (t) => [
+    pgPolicy("items_select_member", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`
+        EXISTS(
+          SELECT 1 FROM user_homes uh
+           WHERE uh.home_id = ${t.home_id} AND uh.user_id = auth.uid()
+        )
+      `,
+    }),
+  ]
+);
 
 // ItemCategories (Junction Table for Many-to-Many Item-Category relationship)
 export const item_categories = pgTable(
