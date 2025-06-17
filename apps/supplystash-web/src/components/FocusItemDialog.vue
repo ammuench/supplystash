@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { CubeIcon, MinusIcon, PlusIcon } from "@heroicons/vue/24/outline";
-import { computed, ref, useTemplateRef } from "vue";
+import { computed, onMounted, onUnmounted, ref, useTemplateRef } from "vue";
 
 import { useItemAmountUpdater } from "@/composables/useItemAmountUpdater";
 
@@ -30,13 +30,26 @@ const showModal = () => {
   focusDialog.value?.showModal();
 };
 
+const {
+  clearError,
+  updateItem,
+  isLoading,
+  error: updateError,
+} = useItemAmountUpdater();
+
+const clearErrorWithCloseDelay = () => {
+  setTimeout(() => {
+    clearError();
+  }, 500);
+};
+
 const dismissModal = () => {
   focusDialog.value?.close();
+  clearErrorWithCloseDelay();
 };
 
 const countValue = ref<number>(0);
 
-const { updateItem, isLoading, error: updateError } = useItemAmountUpdater();
 const handleUpdateItem = async () => {
   if (focusedItem.value) {
     await updateItem(focusedItem.value.id, countValue.value);
@@ -64,12 +77,20 @@ defineExpose({
   showModal,
   dismissModal,
 });
+
+onMounted(() => {
+  focusDialog.value?.addEventListener("close", clearErrorWithCloseDelay);
+});
+
+onUnmounted(() => {
+  focusDialog.value?.removeEventListener("close", clearErrorWithCloseDelay);
+});
 </script>
 <template>
   <dialog
     id="focus-item-details-dialog"
     ref="focus-item-details-dialog"
-    class="modal"
+    class="modal scrollbar-stable"
   >
     <div class="modal-box">
       <div
@@ -141,30 +162,42 @@ defineExpose({
         No item selected
       </div>
 
-      <div class="modal-action">
-        <form
-          method="dialog"
-          :disabled="isLoading"
-        >
-          <button
-            class="btn btn-outline btn-error"
+      <div class="modal-action flex-col alert-info-end">
+        <div v-if="updateError">
+          <p class="text-right text-sm text-error">{{ updateError }}</p>
+        </div>
+        <div class="flex flex-row gap-2 justify-end">
+          <form
+            method="dialog"
             :disabled="isLoading"
           >
-            Cancel
+            <button
+              class="btn btn-outline btn-error"
+              :disabled="isLoading"
+              @click="clearErrorWithCloseDelay"
+            >
+              Cancel
+            </button>
+          </form>
+          <button
+            class="btn btn-primary"
+            :disabled="isLoading"
+            @click="handleUpdateItem"
+          >
+            <span
+              v-if="isLoading"
+              class="loading loading-spinner"
+            ></span>
+            Update
           </button>
-        </form>
-        <button
-          class="btn btn-primary"
-          :disabled="isLoading"
-          @click="handleUpdateItem"
-        >
-          <span
-            v-if="isLoading"
-            class="loading loading-spinner"
-          ></span>
-          Update
-        </button>
+        </div>
       </div>
     </div>
   </dialog>
 </template>
+
+<style lang="css" scoped>
+.scrollbar-stable {
+  scrollbar-gutter: auto;
+}
+</style>

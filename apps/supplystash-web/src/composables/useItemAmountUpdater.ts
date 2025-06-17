@@ -72,5 +72,9 @@ export const useItemAmountUpdater = () => {
     }
   };
 
-  return { updateItem, isLoading, error };
+  const clearError = () => {
+    error.value = null;
+  };
+
+  return { clearError, updateItem, isLoading, error };
 };
