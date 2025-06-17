@@ -13,6 +13,7 @@ import { useRoute } from "vue-router";
 import DefaultLayout from "@/components/layouts/DefaultLayout.vue";
 
 import { useAuthStore } from "@/stores/auth.store";
+import { useToastsStore } from "@/stores/toasts.store";
 
 // TODO: Create a zod schema for this form
 const email = ref("");
@@ -22,6 +23,7 @@ const errorMessage = ref("");
 const showPassword = ref(false);
 
 const authStore = useAuthStore();
+const toastStore = useToastsStore();
 
 const handleSubmit = async () => {
   try {
@@ -32,8 +34,12 @@ const handleSubmit = async () => {
       email: email.value,
       password: password.value,
     });
-
-    router.push({ name: "list" });
+    router.push({ name: "home" });
+    toastStore.createToast({
+      message: "You've been logged in",
+      status: "success",
+      dismissable: true,
+    });
   } catch (error) {
     if (error instanceof Error) {
       errorMessage.value = error.message;
