@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SupplyItem } from "@supplystash/types";
-import { useTemplateRef } from "vue";
+import { onMounted, onUnmounted, useTemplateRef } from "vue";
 
 import FocusItemDialog from "@/components/FocusItemDialog.vue";
 import SupplyItemList from "@/components/SupplyItemList.vue";
@@ -18,6 +18,14 @@ const togggleFocusItemModal = (item: SupplyItem) => {
   supplyItemStore.setFocusedItem(item);
   modalRef.value?.showModal();
 };
+
+// TODO: Figure out if this makes sense long-term, maybe move this into App.vue?
+onMounted(() => {
+  supplyItemStore.subscribeToRealtimeItems();
+});
+onUnmounted(() => {
+  supplyItemStore.unsubscribeFromRealtimeItems();
+});
 </script>
 
 <template>

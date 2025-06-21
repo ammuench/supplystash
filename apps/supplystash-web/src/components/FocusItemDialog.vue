@@ -55,6 +55,7 @@ const handleUpdateItem = async () => {
     await updateItem(focusedItem.value.id, countValue.value);
     dismissModal();
     createToast({
+      id: `${focusedItem.value.id}__amtUpdateLocal`,
       dismissable: true,
       duration: 1500,
       message: `Updated ${focusedItem.value.title} count`,

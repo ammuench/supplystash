@@ -42,9 +42,15 @@ export const useToastsStore = defineStore("toasts", () => {
     toasts.value = updatedArray;
   };
 
+  const doesToastExistForItem = (id: string) => {
+    const idMatch = toasts.value.find((toast) => toast.id.includes(id));
+    return Boolean(idMatch);
+  };
+
   return {
     toasts,
     createToast,
     removeToast,
+    doesToastExistForItem,
   };
 });
