@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1749889660779,
-      "tag": "0000_round_rumiko_fujikawa",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1750132126153,
-      "tag": "0001_black_ronan",
+      "when": 1750471448171,
+      "tag": "0000_nice_puma",
       "breakpoints": true
     }
   ]

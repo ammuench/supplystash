@@ -7,9 +7,9 @@
     "dev:local": "pnpm --filter supplystash-web dev",
     "dev:server": "pnpm --filter supplystash-server dev",
     "dev:server:local": "pnpm --filter supplystash-server dev",
-    "dev:server:db:local": "pnpm --filter supplystash-server db:local",
-    "dev:local:down": "pnpm --filter supplystash-server db:local:down",
     "dev:types": "pnpm --filter @supplystash/types dev",
+    "supabase:start": "pnpm supabase start",
+    "supabase:stop": "pnpm supabase stop",
     "lint:staged": "pnpm lint-staged --concurrent true --relative",
     "prepare": "husky"
   },
@@ -35,6 +35,7 @@
     "nx": "21.0.3",
     "prettier": "4.0.0-alpha.12",
     "prettier-plugin-tailwindcss": "^0.6.11",
+    "supabase": "^2.26.9",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.32.0",
     "vite": "^6.0.0",
@@ -58,7 +59,7 @@
         "dependsOn": [
           "dev:types",
           "dev:server:local",
-          "dev:server:db:local"
+          "supabase:start"
         ]
       },
       "dev:server": {
@@ -70,12 +71,12 @@
       "dev:server:local": {
         "dependsOn": [
           "dev:types",
-          "dev:server:db:local"
+          "supabase:start"
         ],
         "continuous": true
       },
-      "dev:server:db:local": {
-        "continuous": true
+      "supabase:start": {
+        "continuous": false
       },
       "dev:types": {
         "continuous": true

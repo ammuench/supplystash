@@ -1,5 +1,5 @@
 {
-  "id": "9261d62f-fbff-4a7a-ba9b-2664af6ad234",
+  "id": "b08a3502-f309-4a90-b305-6b9c1b638497",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -114,7 +114,15 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
+      "policies": {
+        "homes_select_member": {
+          "name": "homes_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["authenticated"],
+          "using": "\n        EXISTS(\n          SELECT 1 FROM user_homes uh\n           WHERE uh.home_id = \"homes\".\"id\" AND uh.user_id = auth.uid()\n        )\n      "
+        }
+      },
       "checkConstraints": {},
       "isRLSEnabled": false
     },
@@ -149,7 +157,8 @@
         },
         "transaction_type": {
           "name": "transaction_type",
-          "type": "varchar(50)",
+          "type": "inventory_transaction_type",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
@@ -364,7 +373,15 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
+      "policies": {
+        "items_select_member": {
+          "name": "items_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["authenticated"],
+          "using": "\n        EXISTS(\n          SELECT 1 FROM user_homes uh\n           WHERE uh.home_id = \"items\".\"home_id\" AND uh.user_id = auth.uid()\n        )\n      "
+        }
+      },
       "checkConstraints": {},
       "isRLSEnabled": false
     },
@@ -526,7 +543,15 @@
         }
       },
       "uniqueConstraints": {},
-      "policies": {},
+      "policies": {
+        "user_homes_select_self": {
+          "name": "user_homes_select_self",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["authenticated"],
+          "using": "\"user_homes\".\"user_id\" = auth.uid()"
+        }
+      },
       "checkConstraints": {},
       "isRLSEnabled": false
     },
@@ -607,7 +632,19 @@
       "isRLSEnabled": false
     }
   },
-  "enums": {},
+  "enums": {
+    "public.inventory_transaction_type": {
+      "name": "inventory_transaction_type",
+      "schema": "public",
+      "values": [
+        "decrease_amt",
+        "increase_amt",
+        "set_amt",
+        "create_item",
+        "change_item_information"
+      ]
+    }
+  },
   "schemas": {},
   "sequences": {},
   "roles": {},

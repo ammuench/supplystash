@@ -143,7 +143,7 @@ export const item_categories = pgTable(
 );
 
 // Enum for inventory transaction types
-const inventoryTransactionAction = pgEnum(
+export const inventoryTransactionAction = pgEnum(
   "inventory_transaction_type",
   SUPPLY_ITEM_UPDATE_ACTION
 );

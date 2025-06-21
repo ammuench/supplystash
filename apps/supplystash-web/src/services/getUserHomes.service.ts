@@ -14,7 +14,6 @@ export const getUserHomes = async (): Promise<UserHomeRecord[]> => {
   const { data: userHomes, error: userHomesError } = await supabase
     .from("user_homes")
     .select()
-    .eq("user_id", userId)
     .overrideTypes<UserHomeRecord[]>();
 
   if (userHomesError) {

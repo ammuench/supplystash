@@ -4,8 +4,6 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "dev:local": "tsx watch src/index.ts",
-    "db:local": "docker compose -f docker/docker-compose.yml up",
-    "db:local:down": "docker compose -f docker/docker-compose.yml down",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "build": "tsc",
