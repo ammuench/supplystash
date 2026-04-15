@@ -1,0 +1,11 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: oxlint
+      run: pnpm exec oxlint {staged_files}
+      glob: "*.{js,ts,vue,jsx,tsx}"
+      stage_fixed: true
+    - name: oxfmt
+      run: pnpm exec oxfmt {staged_files}
+      glob: "*.{js,ts,vue,jsx,tsx,json}"
+      stage_fixed: true

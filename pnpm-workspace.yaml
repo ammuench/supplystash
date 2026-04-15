@@ -1,9 +1,7 @@
 packages:
   - apps/*
-  - packages/*
 onlyBuiltDependencies:
+  - lefthook
+  - supabase
   - "@parcel/watcher"
   - esbuild
-  - lmdb
-  - msgpackr-extract
-  - nx
