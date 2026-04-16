@@ -5,3 +5,4 @@ onlyBuiltDependencies:
   - supabase
   - "@parcel/watcher"
   - esbuild
+  - squawk-cli
