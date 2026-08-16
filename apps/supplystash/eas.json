@@ -4,18 +4,59 @@
     "appVersionSource": "remote"
   },
   "build": {
-    "development": {
+    "development-simulator": {
+      "node": "22.18.0",
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EAS_BUILD_PROFILE": "development-simulator",
+        "EXPO_PUBLIC_SUPABASE_URL": "",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": ""
+      },
+      "channel": "development-simulator"
+    },
+    "development": {
+      "node": "22.18.0",
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EAS_BUILD_PROFILE": "development",
+        "EXPO_PUBLIC_SUPABASE_URL": "",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": ""
+      },
+      "channel": "development"
     },
     "preview": {
-      "distribution": "internal"
+      "node": "22.18.0",
+      "distribution": "internal",
+      "autoIncrement": true,
+      "env": {
+        "EAS_BUILD_PROFILE": "preview",
+        "EXPO_PUBLIC_SUPABASE_URL": "",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": ""
+      },
+      "channel": "preview"
     },
     "production": {
-      "autoIncrement": true
+      "node": "22.18.0",
+      "autoIncrement": true,
+      "env": {
+        "EAS_BUILD_PROFILE": "production",
+        "EXPO_PUBLIC_SUPABASE_URL": "",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": ""
+      },
+      "channel": "production"
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
   }
 }
