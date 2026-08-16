@@ -2,6 +2,7 @@
   "name": "supplystash",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev:mobile": "pnpm --filter @supplystash/app dev",
     "dev:web": "pnpm --filter @supplystash/app web",

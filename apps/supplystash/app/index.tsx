@@ -1,7 +1,7 @@
 import { Link, Stack } from "expo-router";
 import { MoonStarIcon, StarIcon, SunIcon } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { Image, type ImageStyle, View } from "react-native";
+import { Uniwind, useUniwind } from "uniwind";
 
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -24,13 +24,13 @@ const IMAGE_STYLE: ImageStyle = {
 };
 
 export default function Screen() {
-  const { colorScheme } = useColorScheme();
+  const { theme } = useUniwind();
 
   return (
     <>
       <Stack.Screen options={SCREEN_OPTIONS} />
       <View className="flex-1 items-center justify-center gap-8 p-4">
-        <Image source={LOGO[colorScheme ?? "light"]} style={IMAGE_STYLE} resizeMode="contain" />
+        <Image source={LOGO[theme ?? "light"]} style={IMAGE_STYLE} resizeMode="contain" />
         <View className="gap-2 p-4">
           <Text className="font-mono text-sm text-muted-foreground ios:text-foreground">
             1. Edit <Text variant="code">app/index.tsx</Text> to get started.
@@ -63,16 +63,20 @@ const THEME_ICONS = {
 };
 
 function ThemeToggle() {
-  const { colorScheme, toggleColorScheme } = useColorScheme();
+  const { theme } = useUniwind();
+
+  function toggleTheme() {
+    Uniwind.setTheme(theme === "dark" ? "light" : "dark");
+  }
 
   return (
     <Button
-      onPressIn={toggleColorScheme}
+      onPressIn={toggleTheme}
       size="icon"
       variant="ghost"
       className="rounded-full ios:size-9 web:mx-4"
     >
-      <Icon as={THEME_ICONS[colorScheme ?? "light"]} className="size-5" />
+      <Icon as={THEME_ICONS[theme ?? "light"]} className="size-5" />
     </Button>
   );
 }
