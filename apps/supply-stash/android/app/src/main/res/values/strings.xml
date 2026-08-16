@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Supply Stash</string>
-    <string name="title_activity_main">Supply Stash</string>
-    <string name="package_name">ch.alexmuen.supplystash</string>
-    <string name="custom_url_scheme">ch.alexmuen.supplystash</string>
-</resources>
