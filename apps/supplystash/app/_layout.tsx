@@ -3,7 +3,7 @@ import { PortalHost } from "@rn-primitives/portal";
 import { Stack } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
 import { StatusBar } from "expo-status-bar";
-import { useColorScheme } from "nativewind";
+import { useUniwind } from "uniwind";
 
 import { NAV_THEME } from "@/lib/theme";
 
@@ -13,11 +13,11 @@ export {
 } from "expo-router";
 
 export default function RootLayout() {
-  const { colorScheme } = useColorScheme();
+  const { theme } = useUniwind();
 
   return (
-    <ThemeProvider value={NAV_THEME[colorScheme ?? "light"]}>
-      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+    <ThemeProvider value={NAV_THEME[theme ?? "light"]}>
+      <StatusBar style={theme === "dark" ? "light" : "dark"} />
       <Stack />
       <PortalHost />
     </ThemeProvider>

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @supplystash/app dev",
+    "dev:mobile": "pnpm --filter @supplystash/app dev",
     "dev:web": "pnpm --filter @supplystash/app web",
     "lint": "oxlint",
     "format": "oxfmt",

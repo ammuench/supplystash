@@ -29,17 +29,17 @@ export default function Screen() {
   return (
     <>
       <Stack.Screen options={SCREEN_OPTIONS} />
-      <View className="gap-8 p-4 flex-1 items-center justify-center">
+      <View className="flex-1 items-center justify-center gap-8 p-4">
         <Image source={LOGO[colorScheme ?? "light"]} style={IMAGE_STYLE} resizeMode="contain" />
         <View className="gap-2 p-4">
-          <Text className="ios:text-foreground font-mono text-sm text-muted-foreground">
+          <Text className="font-mono text-sm text-muted-foreground ios:text-foreground">
             1. Edit <Text variant="code">app/index.tsx</Text> to get started.
           </Text>
-          <Text className="ios:text-foreground font-mono text-sm text-muted-foreground">
+          <Text className="font-mono text-sm text-muted-foreground ios:text-foreground">
             2. Save to see your changes instantly.
           </Text>
         </View>
-        <View className="gap-2 flex-row">
+        <View className="flex-row gap-2">
           <Link href="https://reactnativereusables.com" asChild>
             <Button>
               <Text>Browse the Docs</Text>
@@ -70,7 +70,7 @@ function ThemeToggle() {
       onPressIn={toggleColorScheme}
       size="icon"
       variant="ghost"
-      className="ios:size-9 web:mx-4 rounded-full"
+      className="rounded-full ios:size-9 web:mx-4"
     >
       <Icon as={THEME_ICONS[colorScheme ?? "light"]} className="size-5" />
     </Button>
