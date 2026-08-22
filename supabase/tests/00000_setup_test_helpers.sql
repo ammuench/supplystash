@@ -144,3 +144,23 @@ begin
   perform set_config('request.jwt.claims', '{}', true);
 end;
 $$;
+
+-- ============================================================
+-- Grants
+-- tests.authenticate_as() switches the session role to `authenticated`,
+-- so every later tests.* call runs as that role. Without USAGE on the
+-- schema and EXECUTE on the helpers, the first post-authentication call
+-- fails with "permission denied for schema tests".
+-- ============================================================
+
+grant usage on schema tests to authenticated, anon, service_role;
+grant execute on all functions in schema tests to authenticated, anon, service_role;
+grant select on tests._test_users to authenticated, anon, service_role;
+
+-- This file defines helpers rather than asserting behavior, but pg_prove
+-- needs a plan in every file it globs. Assert the helpers actually loaded.
+select plan(1);
+
+select has_function('tests', 'authenticate_as', 'Test helpers are installed');
+
+select * from finish();

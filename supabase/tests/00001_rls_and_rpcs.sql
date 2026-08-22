@@ -3,7 +3,7 @@
 
 begin;
 
-select plan(32);
+select plan(42);
 
 -- ============================================================
 -- Setup: create test users via Supabase auth helpers
@@ -33,6 +33,11 @@ select isnt(
 
 -- Store the home_id in a temp table so every test below can reference it
 create temp table test_state (home_id uuid);
+
+-- Temp tables are owned by the session user, but the tests below read them
+-- after switching role to authenticated/anon/service_role. Without these
+-- grants the first read after a role switch fails with "permission denied".
+grant select on test_state to authenticated, anon, service_role;
 insert into test_state
 select public.create_home('Main Home', 'The main test home');
 
@@ -155,13 +160,21 @@ select throws_ok(
 -- Owner creates an item (member+ can insert via RLS)
 select tests.authenticate_as('owner_user');
 
-insert into public.items (home_id, title, current_inventory, warning_amount, created_by_id)
+insert into public.items (home_id, title, warning_amount, created_by_id)
 values (
   (select home_id from test_state),
   'Paper Towels',
-  5,
   2,
   tests.get_supabase_uid('owner_user')
+);
+
+-- Opening count comes from a ledger row, not from the insert.
+insert into public.inventory_transactions (item_id, user_id, quantity_changed, transaction_type)
+values (
+  (select id from public.items where title = 'Paper Towels' limit 1),
+  tests.get_supabase_uid('owner_user'),
+  5,
+  'manual_add'
 );
 
 select is(
@@ -174,11 +187,10 @@ select is(
 -- Member can insert items
 select tests.authenticate_as('member_user');
 
-insert into public.items (home_id, title, current_inventory, warning_amount, created_by_id)
+insert into public.items (home_id, title, warning_amount, created_by_id)
 values (
   (select home_id from test_state),
   'Dish Soap',
-  3,
   1,
   tests.get_supabase_uid('member_user')
 );
@@ -193,7 +205,7 @@ select is(
 -- Member can update items
 select lives_ok(
   format(
-    'update public.items set current_inventory = 4 where title = %L and home_id = %L',
+    'update public.items set warning_amount = 4 where title = %L and home_id = %L',
     'Dish Soap',
     (select home_id from test_state)
   ),
@@ -201,13 +213,19 @@ select lives_ok(
 );
 
 -- Member can delete items (delete only the one they added)
+create temp table member_deleted_items as
+with d as (
+  delete from public.items
+  where title = 'Dish Soap'
+    and home_id = (select home_id from test_state)
+  returning id
+)
+select id from d;
+
+grant select on member_deleted_items to authenticated, anon, service_role;
+
 select is(
-  (select count(*)::integer from (
-    delete from public.items
-    where title = 'Dish Soap'
-      and home_id = (select home_id from test_state)
-    returning id
-  ) as deleted),
+  (select count(*)::integer from member_deleted_items),
   1,
   'Member can delete items'
 );
@@ -225,7 +243,7 @@ select is(
 -- Viewer CANNOT insert items
 select throws_ok(
   format(
-    'insert into public.items (home_id, title, current_inventory, warning_amount, created_by_id) values (%L, %L, 1, 1, %L)',
+    'insert into public.items (home_id, title, warning_amount, created_by_id) values (%L, %L, 1, %L)',
     (select home_id from test_state),
     'Sneaky Item',
     tests.get_supabase_uid('viewer_user')
@@ -240,7 +258,7 @@ select tests.authenticate_as('contrib_user');
 
 select lives_ok(
   format(
-    'update public.items set current_inventory = 10 where home_id = %L',
+    'update public.items set warning_amount = 10 where home_id = %L',
     (select home_id from test_state)
   ),
   'Contributor can update items'
@@ -249,7 +267,7 @@ select lives_ok(
 -- Contributor CANNOT insert items
 select throws_ok(
   format(
-    'insert into public.items (home_id, title, current_inventory, warning_amount, created_by_id) values (%L, %L, 1, 1, %L)',
+    'insert into public.items (home_id, title, warning_amount, created_by_id) values (%L, %L, 1, %L)',
     (select home_id from test_state),
     'Another Item',
     tests.get_supabase_uid('contrib_user')
@@ -262,12 +280,18 @@ select throws_ok(
 -- Contributor CANNOT delete items
 -- DELETE with RLS returns 0 rows instead of throwing, so we
 -- count the returned rows to verify nothing was deleted.
+create temp table contrib_deleted_items as
+with d as (
+  delete from public.items
+  where home_id = (select home_id from test_state)
+  returning id
+)
+select id from d;
+
+grant select on contrib_deleted_items to authenticated, anon, service_role;
+
 select is(
-  (select count(*)::integer from (
-    delete from public.items
-    where home_id = (select home_id from test_state)
-    returning id
-  ) as deleted),
+  (select count(*)::integer from contrib_deleted_items),
   0,
   'Contributor cannot delete items'
 );
@@ -472,6 +496,141 @@ select is(
      and home_id = (select home_id from test_state)),
   'admin',
   'Previous owner is now admin after transfer'
+);
+
+-- ============================================================
+-- Test: current_inventory is derived, not written
+-- Migration 20260415000005 revoked the column from `authenticated`
+-- and added a guard trigger for the paths privileges miss.
+-- Paper Towels ledger so far: +5 (owner, manual_add), -1 (contrib, consume).
+-- ============================================================
+
+select tests.authenticate_as('contrib_user');
+
+select is(
+  (select current_inventory from public.items where title = 'Paper Towels'),
+  (select coalesce(sum(quantity_changed), 0)::integer
+   from public.inventory_transactions
+   where item_id = (select id from public.items where title = 'Paper Towels')),
+  'current_inventory equals the ledger sum'
+);
+
+-- A client UPDATE of the column is refused at the privilege layer
+select throws_ok(
+  format(
+    'update public.items set current_inventory = 99 where title = %L',
+    'Paper Towels'
+  ),
+  '42501',
+  null,
+  'Client cannot UPDATE current_inventory'
+);
+
+-- ...and so is seeding it at INSERT time
+select throws_ok(
+  format(
+    'insert into public.items (home_id, title, current_inventory, warning_amount, created_by_id) values (%L, %L, 7, 1, %L)',
+    (select home_id from test_state),
+    'Seeded Item',
+    tests.get_supabase_uid('contrib_user')
+  ),
+  '42501',
+  null,
+  'Client cannot INSERT current_inventory'
+);
+
+-- service_role bypasses RLS and column privileges — the guard trigger
+-- is what stops it. The write succeeds but the value does not move.
+select tests.authenticate_as_service_role();
+
+select lives_ok(
+  format(
+    'update public.items set current_inventory = 99 where title = %L',
+    'Paper Towels'
+  ),
+  'service_role UPDATE of current_inventory does not error'
+);
+
+select is(
+  (select current_inventory from public.items where title = 'Paper Towels'),
+  4,
+  'Guard trigger neutralizes a service_role write to current_inventory'
+);
+
+-- Identity columns are immutable even for service_role
+select throws_ok(
+  format(
+    'update public.items set home_id = %L where title = %L',
+    gen_random_uuid(),
+    'Paper Towels'
+  ),
+  'items.id, home_id, created_by_id and created_at are immutable',
+  'Guard trigger rejects a home_id change'
+);
+
+-- ============================================================
+-- Test: the cache trigger fires on UPDATE and DELETE, not just INSERT
+-- ============================================================
+
+-- Correcting a ledger row recomputes the cache: -1 becomes -3, so 5-3=2
+update public.inventory_transactions
+set quantity_changed = -3
+where item_id = (select id from public.items where title = 'Paper Towels')
+  and quantity_changed = -1;
+
+select is(
+  (select current_inventory from public.items where title = 'Paper Towels'),
+  2,
+  'Cache recomputes when a ledger row is UPDATEd'
+);
+
+-- Removing that correction leaves only the +5 opening row
+delete from public.inventory_transactions
+where item_id = (select id from public.items where title = 'Paper Towels')
+  and quantity_changed = -3;
+
+select is(
+  (select current_inventory from public.items where title = 'Paper Towels'),
+  5,
+  'Cache recomputes when a ledger row is DELETEd'
+);
+
+-- ============================================================
+-- Test: set_updated_at fires on metadata edits  (doc §5.2)
+-- ============================================================
+
+-- Two obstacles to testing this in-transaction:
+--   now() is the transaction timestamp, so it never advances between
+--   statements -- the row has to be backdated to have anything to compare.
+--   But set_updated_at is a BEFORE UPDATE trigger, so an ordinary backdate
+--   is immediately overwritten by the trigger itself.
+-- Drop to the session superuser and turn triggers off for the one statement.
+reset role;
+set local session_replication_role = replica;
+
+update public.items
+set updated_at = now() - interval '1 day'
+where title = 'Paper Towels';
+
+set local session_replication_role = origin;
+
+create temp table updated_at_probe (before_ts timestamptz);
+
+grant select on updated_at_probe to authenticated, anon, service_role;
+
+insert into updated_at_probe
+select updated_at from public.items where title = 'Paper Towels';
+
+select tests.authenticate_as('contrib_user');
+
+update public.items
+set description = 'Now with more absorbency'
+where title = 'Paper Towels';
+
+select ok(
+  (select i.updated_at from public.items i where i.title = 'Paper Towels')
+    > (select before_ts from updated_at_probe),
+  'Editing item metadata bumps updated_at'
 );
 
 select * from finish();
