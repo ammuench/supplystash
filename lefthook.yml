@@ -10,5 +10,5 @@ pre-commit:
       glob: "*.{js,ts,vue,jsx,tsx,json,md,css}"
       stage_fixed: true
     - name: squawk
-      run: pnpm squawk {staged_files}
+      run: pnpm exec squawk {staged_files}
       glob: "supabase/migrations/*.sql"

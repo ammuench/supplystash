@@ -212,10 +212,13 @@ select lives_ok(
   'Member can update items'
 );
 
--- Member can delete items (delete only the one they added)
+-- Member can delete items. Deletion is a soft delete since
+-- 20260823000001_soft_delete_bank: the DELETE policy is gone and the row is
+-- flagged instead, so the ledger hanging off it survives.
 create temp table member_deleted_items as
 with d as (
-  delete from public.items
+  update public.items
+  set deleted = true
   where title = 'Dish Soap'
     and home_id = (select home_id from test_state)
   returning id
@@ -227,15 +230,19 @@ grant select on member_deleted_items to authenticated, anon, service_role;
 select is(
   (select count(*)::integer from member_deleted_items),
   1,
-  'Member can delete items'
+  'Member can soft-delete items'
 );
 
 -- Viewer can READ items
 select tests.authenticate_as('viewer_user');
 
+-- Filtered on deleted = false, exactly as the state/ hooks query (doc §5.3):
+-- the soft-deleted 'Dish Soap' row is still physically present and RLS-visible,
+-- it is simply excluded from the live list.
 select is(
   (select count(*)::integer from public.items
-   where home_id = (select home_id from test_state)),
+   where home_id = (select home_id from test_state)
+     and deleted = false),
   1,
   'Viewer can read items'
 );
@@ -601,7 +608,7 @@ select throws_ok(
     gen_random_uuid(),
     'Paper Towels'
   ),
-  'items.id, home_id, created_by_id and created_at are immutable',
+  'items.id, home_id and created_at are immutable',
   'Guard trigger rejects a home_id change'
 );
 
