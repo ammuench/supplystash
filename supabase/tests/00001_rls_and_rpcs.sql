@@ -3,7 +3,7 @@
 
 begin;
 
-select plan(42);
+select plan(44);
 
 -- ============================================================
 -- Setup: create test users via Supabase auth helpers
@@ -496,6 +496,43 @@ select is(
      and home_id = (select home_id from test_state)),
   'admin',
   'Previous owner is now admin after transfer'
+);
+
+-- ============================================================
+-- Test: notifications UPDATE cannot reassign ownership
+-- The UPDATE policy's USING clause decides which rows you may touch;
+-- WITH CHECK decides what the row is allowed to look like afterward.
+-- Without WITH CHECK a user could hand their own row to someone else.
+-- ============================================================
+
+select tests.authenticate_as_service_role();
+
+insert into public.notifications (user_id, home_id, message, type)
+values (
+  tests.get_supabase_uid('member_user'),
+  (select home_id from test_state),
+  'Paper Towels are running low',
+  'low_stock'
+);
+
+select tests.authenticate_as('member_user');
+
+-- The legitimate update still works — guards against WITH CHECK being too strict
+select lives_ok(
+  $$update public.notifications set is_read = true where message = 'Paper Towels are running low'$$,
+  'Member can mark their own notification read'
+);
+
+-- A WITH CHECK violation RAISES (42501), unlike a USING clause, which
+-- filters rows away silently. So assert on the error, not on a row count.
+select throws_ok(
+  format(
+    $$update public.notifications set user_id = %L where message = 'Paper Towels are running low'$$,
+    tests.get_supabase_uid('outsider_user')
+  ),
+  '42501',
+  'new row violates row-level security policy for table "notifications"',
+  'Member cannot reassign their notification to another user'
 );
 
 -- ============================================================

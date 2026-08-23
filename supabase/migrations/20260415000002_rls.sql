@@ -136,6 +136,9 @@ create policy "members can update categories"
   on public.categories for update
   using (
     public.get_home_role(home_id) in ('owner', 'admin', 'member')
+  )
+  with check (
+    public.get_home_role(home_id) in ('owner', 'admin', 'member')
   );
 
 create policy "members can delete categories"
@@ -158,12 +161,15 @@ create policy "members can insert items"
   on public.items for insert
   with check (
     public.get_home_role(home_id) in ('owner', 'admin', 'member')
-    and auth.uid() = created_by_id
+    and (select auth.uid()) = created_by_id
   );
 
 create policy "contributors can update items"
   on public.items for update
   using (
+    public.get_home_role(home_id) in ('owner', 'admin', 'member', 'contributor')
+  )
+  with check (
     public.get_home_role(home_id) in ('owner', 'admin', 'member', 'contributor')
   );
 
@@ -229,7 +235,7 @@ create policy "members can view transactions"
 create policy "contributors can insert transactions"
   on public.inventory_transactions for insert
   with check (
-    user_id = auth.uid()
+    user_id = (select auth.uid())
     and exists (
       select 1 from public.items
       where items.id = inventory_transactions.item_id
@@ -259,6 +265,9 @@ create policy "contributors can update shopping list items"
   on public.shopping_list_items for update
   using (
     public.get_home_role(home_id) in ('owner', 'admin', 'member', 'contributor')
+  )
+  with check (
+    public.get_home_role(home_id) in ('owner', 'admin', 'member', 'contributor')
   );
 
 create policy "members can delete shopping list items"
@@ -275,15 +284,16 @@ alter table public.notifications enable row level security;
 
 create policy "users can view their notifications"
   on public.notifications for select
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 create policy "users can update their notifications"
   on public.notifications for update
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 
 create policy "users can delete their notifications"
   on public.notifications for delete
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 -- ============================================================
 -- device_tokens — user's own only
@@ -293,18 +303,19 @@ alter table public.device_tokens enable row level security;
 
 create policy "users can view their device tokens"
   on public.device_tokens for select
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 create policy "users can insert their device tokens"
   on public.device_tokens for insert
-  with check (user_id = auth.uid());
+  with check (user_id = (select auth.uid()));
 
 create policy "users can update their device tokens"
   on public.device_tokens for update
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 
 create policy "users can delete their device tokens"
   on public.device_tokens for delete
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 commit;

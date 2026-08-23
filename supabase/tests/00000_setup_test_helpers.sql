@@ -18,6 +18,7 @@ create or replace function tests.create_supabase_user(
 )
 returns uuid
 language plpgsql
+set search_path = public, extensions, pg_temp
 as $$
 declare
   v_user_id uuid;
@@ -80,6 +81,7 @@ create or replace function tests.get_supabase_uid(p_identifier text)
 returns uuid
 language sql
 stable
+set search_path = public, pg_temp
 as $$
   select user_id from tests._test_users where identifier = p_identifier;
 $$;
@@ -93,6 +95,7 @@ $$;
 create or replace function tests.authenticate_as(p_identifier text)
 returns void
 language plpgsql
+set search_path = public, pg_temp
 as $$
 declare
   v_user_id uuid;
@@ -123,6 +126,7 @@ $$;
 create or replace function tests.authenticate_as_service_role()
 returns void
 language plpgsql
+set search_path = public, pg_temp
 as $$
 begin
   perform set_config('role', 'service_role', true);
@@ -138,6 +142,7 @@ $$;
 create or replace function tests.clear_authentication()
 returns void
 language plpgsql
+set search_path = public, pg_temp
 as $$
 begin
   perform set_config('role', 'anon', true);
