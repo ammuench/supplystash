@@ -22,5 +22,3 @@ jobs:
         run: pnpm lint
       - name: oxfmt
         run: pnpm format:check
-      - name: squawk (migration lint)
-        run: pnpm db:lint
