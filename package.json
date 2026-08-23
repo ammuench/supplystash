@@ -26,6 +26,7 @@
     "db:migrate:prod:dry": "supabase db push --db-url \"$SUPABASE_DB_URL_PROD\" --dry-run",
     "db:new-migration": "supabase migration new",
     "db:test": "supabase test db",
+    "db:types": "supabase gen types typescript --local --schema public > apps/supplystash/lib/database.types.ts && oxfmt apps/supplystash/lib/database.types.ts",
     "db:lint": "squawk supabase/migrations/*.sql"
   },
   "devDependencies": {

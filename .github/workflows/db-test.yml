@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "supabase/**"
+      - "apps/supplystash/lib/database.types.ts"
       - ".squawk.toml"
       - ".github/workflows/db-test.yml"
 
@@ -35,6 +36,21 @@ jobs:
         with:
           version: latest
 
+      # Needed by the drift check below: `pnpm db:types` shells out to oxfmt,
+      # and running it through pnpm pins the Supabase CLI to the version in
+      # devDependencies rather than whichever `latest` resolved to above.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter supplystash
+
       # Boots Postgres + the auth service (tests create users) and skips the
       # rest — studio, realtime, storage etc. add minutes and nothing else.
       - name: Start Supabase
@@ -46,3 +62,17 @@ jobs:
       # green run here also proves the migration chain still applies cleanly.
       - name: Run pgTAP tests
         run: supabase test db
+
+      # The committed types file is what `tsc` reads on a clean checkout, so
+      # nothing else would notice it falling behind the migrations. A stale
+      # types file fails silently -- code type-checks against a schema that no
+      # longer exists -- which is the same shape of bug as an empty realtime
+      # publication.
+      - name: Check generated types are up to date
+        run: |
+          pnpm db:types
+          git diff --exit-code -- apps/supplystash/lib/database.types.ts \
+            || {
+              echo "::error::database.types.ts is stale. Run 'pnpm db:types' and commit the result."
+              exit 1
+            }
