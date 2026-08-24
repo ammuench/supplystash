@@ -31,14 +31,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      # Needed by the drift check below: `pnpm db:types` shells out to oxfmt,
-      # and running it through pnpm pins the Supabase CLI to the version in
-      # devDependencies rather than whichever `latest` resolved to above.
+      # The Supabase CLI comes from devDependencies via the lockfile, not from
+      # supabase/setup-cli's `latest`. A floating CLI silently changes the
+      # Postgres image and its baked-in defaults underneath the migrations --
+      # that is how a green suite started failing with "permission denied for
+      # table user_homes" without a single migration changing.
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
@@ -55,13 +52,13 @@ jobs:
       # rest — studio, realtime, storage etc. add minutes and nothing else.
       - name: Start Supabase
         run: >
-          supabase start
+          pnpm exec supabase start
           -x realtime,storage-api,imgproxy,studio,edge-runtime,logflare,vector,supavisor,mailpit
 
       # `supabase start` applies every migration in supabase/migrations, so a
       # green run here also proves the migration chain still applies cleanly.
       - name: Run pgTAP tests
-        run: supabase test db
+        run: pnpm db:test
 
       # The committed types file is what `tsc` reads on a clean checkout, so
       # nothing else would notice it falling behind the migrations. A stale
