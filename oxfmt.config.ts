@@ -13,7 +13,9 @@ export default defineConfig({
     ],
   },
   sortTailwindcss: {
-    stylesheet: "./apps/supplystash/global.css",
+    // Not global.css: its tokens live in uniwind @variant blocks the sorter
+    // can't read. See the header comment in oxfmt-tailwind.css.
+    stylesheet: "./apps/supplystash/oxfmt-tailwind.css",
     functions: ["clsx", "cn"],
     preserveWhitespace: true,
   },
