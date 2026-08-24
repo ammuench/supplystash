@@ -2,12 +2,6 @@ node_modules
 build
 dist
 
-.aider*
-
-.nx/
-
-.nx/cache
-.nx/workspace-data
 vite.config.*.timestamp*
 vitest.config.*.timestamp*
 
@@ -15,3 +9,58 @@ data
 
 .env*
 !.env.example
+
+# build artifacts
+*.apk
+*.ipa
+*.aab
+*.app
+*.tar.gz
+
+# expo / eas
+.expo
+.expo-shared
+web-build
+expo-env.d.ts
+android
+ios
+.eas-build-local-nodejs
+
+# metro
+.metro-health-check*
+
+# native signing / credentials
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+credentials.json
+google-services.json
+GoogleService-Info.plist
+
+# supabase
+supabase/.branches
+supabase/.temp
+supabase/.env
+
+# typescript / tool caches
+*.tsbuildinfo
+.cache
+.turbo
+.oxlintcache
+
+# logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+pnpm-debug.*
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea
+*.swp

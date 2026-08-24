@@ -1,0 +1,75 @@
+name: Database tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/**"
+      - "apps/supplystash/lib/database.types.ts"
+      - ".squawk.toml"
+      - ".github/workflows/db-test.yml"
+
+jobs:
+  squawk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter supplystash
+      - name: Lint migrations
+        run: pnpm db:lint
+
+  pgtap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The Supabase CLI comes from devDependencies via the lockfile, not from
+      # supabase/setup-cli's `latest`. A floating CLI silently changes the
+      # Postgres image and its baked-in defaults underneath the migrations --
+      # that is how a green suite started failing with "permission denied for
+      # table user_homes" without a single migration changing.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter supplystash
+
+      # Boots Postgres + the auth service (tests create users) and skips the
+      # rest — studio, realtime, storage etc. add minutes and nothing else.
+      - name: Start Supabase
+        run: >
+          pnpm exec supabase start
+          -x realtime,storage-api,imgproxy,studio,edge-runtime,logflare,vector,supavisor,mailpit
+
+      # `supabase start` applies every migration in supabase/migrations, so a
+      # green run here also proves the migration chain still applies cleanly.
+      - name: Run pgTAP tests
+        run: pnpm db:test
+
+      # The committed types file is what `tsc` reads on a clean checkout, so
+      # nothing else would notice it falling behind the migrations. A stale
+      # types file fails silently -- code type-checks against a schema that no
+      # longer exists -- which is the same shape of bug as an empty realtime
+      # publication.
+      - name: Check generated types are up to date
+        run: |
+          pnpm db:types
+          git diff --exit-code -- apps/supplystash/lib/database.types.ts \
+            || {
+              echo "::error::database.types.ts is stale. Run 'pnpm db:types' and commit the result."
+              exit 1
+            }

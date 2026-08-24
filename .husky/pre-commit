@@ -1,1 +1,0 @@
-PRETTIER_LEGACY_CLI=1 pnpm lint:staged

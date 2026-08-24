@@ -1,0 +1,14 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: oxlint
+      run: pnpm oxlint {staged_files}
+      glob: "*.{js,ts,vue,jsx,tsx}"
+      stage_fixed: true
+    - name: oxfmt
+      run: pnpm oxfmt {staged_files}
+      glob: "*.{js,ts,vue,jsx,tsx,json,md,css}"
+      stage_fixed: true
+    - name: squawk
+      run: pnpm exec squawk {staged_files}
+      glob: "supabase/migrations/*.sql"

@@ -1,0 +1,60 @@
+/*
+ * Stylesheet for oxfmt's `sortTailwindcss` only — never shipped.
+ *
+ * global.css declares the theme tokens inside uniwind's @variant light/dark
+ * blocks, which the sorter cannot see. At dev time uniwind's codegen writes
+ * the tokens into node_modules/uniwind/uniwind.css, so sorting *appeared* to
+ * work locally — but a clean install (CI) has the pristine package, treats
+ * bg-primary & co. as unknown classes, and produces a different order.
+ *
+ * This file re-declares the same token *names* in a plain @theme block so the
+ * sorter behaves identically on every machine. Values are irrelevant to
+ * sorting; only the names matter (but `initial` unsets a token, so a dummy
+ * #000 is used). Keep the list in sync with global.css.
+ */
+
+@import "tailwindcss";
+@import "uniwind";
+@import "tw-animate-css";
+
+@theme {
+  --radius: 10px;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --spacing-hairline: 1px;
+
+  --color-background: #000;
+  --color-foreground: #000;
+  --color-card: #000;
+  --color-card-foreground: #000;
+  --color-popover: #000;
+  --color-popover-foreground: #000;
+  --color-primary: #000;
+  --color-primary-foreground: #000;
+  --color-secondary: #000;
+  --color-secondary-foreground: #000;
+  --color-muted: #000;
+  --color-muted-foreground: #000;
+  --color-accent: #000;
+  --color-accent-foreground: #000;
+  --color-destructive: #000;
+  --color-border: #000;
+  --color-input: #000;
+  --color-ring: #000;
+  --color-chart-1: #000;
+  --color-chart-2: #000;
+  --color-chart-3: #000;
+  --color-chart-4: #000;
+  --color-chart-5: #000;
+  --color-sidebar: #000;
+  --color-sidebar-foreground: #000;
+  --color-sidebar-primary: #000;
+  --color-sidebar-primary-foreground: #000;
+  --color-sidebar-accent: #000;
+  --color-sidebar-accent-foreground: #000;
+  --color-sidebar-border: #000;
+  --color-sidebar-ring: #000;
+}

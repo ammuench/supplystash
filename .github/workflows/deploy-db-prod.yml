@@ -1,0 +1,52 @@
+name: Deploy DB migrations (prod)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch name, tag, or commit SHA to migrate from"
+        required: false
+        type: string
+        default: main
+      dry-run:
+        description: "Preview migrations without applying them"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-db-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # The Supabase CLI comes from devDependencies via the lockfile, so prod
+      # is migrated by the same CLI version that ran the tests in db-test.yml.
+      # A floating `latest` here would apply migrations to production with a
+      # binary no CI run ever exercised.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter supplystash
+
+      - name: Push migrations to prod
+        run: pnpm ${{ inputs.dry-run && 'db:migrate:prod:dry' || 'db:migrate:prod' }}
+        env:
+          SUPABASE_DB_URL_PROD: ${{ secrets.SUPABASE_DB_URL_PROD }}

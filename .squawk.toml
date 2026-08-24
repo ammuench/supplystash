@@ -1,0 +1,4 @@
+# squawk config — SQL migration linter
+# https://squawkhq.com/docs/configuration
+
+excluded_rules = ["require-concurrent-index-creation", "prefer-bigint-over-int"]
