@@ -4,6 +4,7 @@ packages:
 # non-interactive context (git hooks, CI).
 verifyDepsBeforeRun: false
 allowBuilds:
+  "@posthog/cli": true
   lefthook: true
   squawk-cli: true
   supabase: true

@@ -7,14 +7,27 @@ for the design; this file covers setup and environment variables.
 
 ```bash
 pnpm install
-pnpm db:start          # start the local Supabase stack
-pnpm db:status         # prints the API URL and publishable key
 
 cp apps/supplystash/.env.example apps/supplystash/.env
-# paste the publishable key from db:status into EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+# fill in EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY from
+# the hosted dev project: https://supabase.com/dashboard/project/_/settings/api
 
 pnpm dev:mobile        # or: pnpm dev:web
 ```
+
+The app points at the **remote** Supabase project by default — nothing to run
+locally, and no context to swap when moving between the app and the dashboard.
+
+Run the local stack only when you want a throwaway database (testing a
+destructive migration, or working offline):
+
+```bash
+pnpm db:start          # start the local Supabase stack
+pnpm db:status         # prints the API URL and publishable key
+```
+
+then point `EXPO_PUBLIC_SUPABASE_URL` at `http://127.0.0.1:54321` and paste the
+publishable key it prints. Migrations live in `supabase/migrations` either way.
 
 ## Environment variables
 
@@ -37,8 +50,23 @@ so read it before adding a new variable.
 | -------------------------------------- | ---------------------------- | ------------------------------------ | ---------------------------------- |
 | `EXPO_PUBLIC_SUPABASE_URL`             | `apps/supplystash/.env`      | `eas.json` — `preview`, `production` | —                                  |
 | `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `apps/supplystash/.env`      | `eas.json` — `preview`, `production` | —                                  |
+| `EXPO_PUBLIC_POSTHOG_API_KEY`          | `apps/supplystash/.env`      | `eas.json` — `preview`, `production` | —                                  |
+| `EXPO_PUBLIC_POSTHOG_HOST`             | `apps/supplystash/.env`      | `eas.json` — `preview`, `production` | —                                  |
+| `POSTHOG_CLI_ENV_ID`                   | **never** — build only       | `eas.json` — `preview`, `production` | —                                  |
+| `POSTHOG_CLI_HOST`                     | **never** — build only       | `eas.json` — `preview`, `production` | —                                  |
+| `POSTHOG_CLI_TOKEN`                    | **never** — build only       | EAS secret                           | —                                  |
 | `EAS_BUILD_PROFILE`                    | set by the `build:*` scripts | `eas.json` — all profiles            | —                                  |
 | `SUPABASE_DB_URL_PROD`                 | **never** — CI only          | —                                    | `SUPABASE_DB_URL_PROD` repo secret |
+
+The `POSTHOG_CLI_*` variables are build-time only and carry no `EXPO_PUBLIC_`
+prefix, so they never reach the client bundle. They drive source-map upload
+during native builds; `app.config.ts` injects that build phase only when
+`POSTHOG_CLI_ENV_ID` is non-empty, so builds succeed (without symbolication)
+while PostHog is unprovisioned. `POSTHOG_CLI_TOKEN` is a credential and must
+stay an EAS secret, never committed to `eas.json`.
+
+PostHog is on the **EU** region (`eu.i.posthog.com`) so event data stays in the
+EU. The project key is region-specific — a US host silently rejects events.
 
 Adding a new `EXPO_PUBLIC_*` variable is a two-place edit: the local `.env`
 (plus the checked-in `.env.example`) and the `preview` + `production` env

@@ -32,7 +32,11 @@
       "env": {
         "EAS_BUILD_PROFILE": "preview",
         "EXPO_PUBLIC_SUPABASE_URL": "https://zicqctxupalzwzuprhte.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_v6ersHEdgKnp_nTNJqGe1w_wUUCUF-W"
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_v6ersHEdgKnp_nTNJqGe1w_wUUCUF-W",
+        "EXPO_PUBLIC_POSTHOG_API_KEY": "",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://eu.i.posthog.com",
+        "POSTHOG_CLI_ENV_ID": "",
+        "POSTHOG_CLI_HOST": "https://eu.posthog.com"
       },
       "channel": "preview"
     },
@@ -42,7 +46,11 @@
       "env": {
         "EAS_BUILD_PROFILE": "production",
         "EXPO_PUBLIC_SUPABASE_URL": "https://zicqctxupalzwzuprhte.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_v6ersHEdgKnp_nTNJqGe1w_wUUCUF-W"
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_v6ersHEdgKnp_nTNJqGe1w_wUUCUF-W",
+        "EXPO_PUBLIC_POSTHOG_API_KEY": "",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://eu.i.posthog.com",
+        "POSTHOG_CLI_ENV_ID": "",
+        "POSTHOG_CLI_HOST": "https://eu.posthog.com"
       },
       "channel": "production"
     }
