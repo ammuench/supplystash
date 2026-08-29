@@ -12,9 +12,7 @@
         "simulator": true
       },
       "env": {
-        "EAS_BUILD_PROFILE": "development-simulator",
-        "EXPO_PUBLIC_SUPABASE_URL": "",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": ""
+        "EAS_BUILD_PROFILE": "development-simulator"
       },
       "channel": "development-simulator"
     },
@@ -23,9 +21,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EAS_BUILD_PROFILE": "development",
-        "EXPO_PUBLIC_SUPABASE_URL": "",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": ""
+        "EAS_BUILD_PROFILE": "development"
       },
       "channel": "development"
     },
