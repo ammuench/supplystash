@@ -74,3 +74,52 @@ describe("# LargeSecureStore", () => {
     expect(await storage.getItem(KEY)).toBe(SESSION);
   });
 });
+
+describe("# supabase client config", () => {
+  // The platform branch runs at module load, so each case needs a fresh module
+  // registry with `Platform.OS` mocked before `lib/supabase` is required.
+  const loadFor = (os: "ios" | "web") => {
+    jest.resetModules();
+    // A Proxy rather than a spread: react-native's index is a bank of lazy
+    // getters, and spreading it evaluates every one — including native modules
+    // like DevMenu that do not exist under jest.
+    jest.doMock("react-native", () => {
+      const actual = jest.requireActual("react-native") as Record<string, unknown>;
+      const platform = { OS: os, select: (spec: Record<string, unknown>) => spec[os] };
+
+      return new Proxy(actual, {
+        get: (target, key) => (key === "Platform" ? platform : Reflect.get(target, key)),
+      });
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require("@/lib/supabase") as typeof import("@/lib/supabase");
+  };
+
+  afterEach(() => {
+    jest.dontMock("react-native");
+    jest.resetModules();
+  });
+
+  describe("## on native", () => {
+    it("persists the session through LargeSecureStore", () => {
+      const native = loadFor("ios");
+
+      expect(native.authConfig.storage).toBeInstanceOf(native.LargeSecureStore);
+    });
+
+    it("does not look for an OAuth fragment, as there is no URL bar", () => {
+      expect(loadFor("ios").authConfig.detectSessionInUrl).toBe(false);
+    });
+  });
+
+  describe("## on web", () => {
+    it("passes no storage, leaving supabase-js to pick localStorage", () => {
+      expect(loadFor("web").authConfig.storage).toBeUndefined();
+    });
+
+    it("reads the OAuth fragment out of the redirect URL", () => {
+      expect(loadFor("web").authConfig.detectSessionInUrl).toBe(true);
+    });
+  });
+});

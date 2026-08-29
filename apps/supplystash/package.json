@@ -16,7 +16,7 @@
     "submit:prod:android": "EAS_BUILD_PROFILE=production eas submit --profile production --platform android --latest",
     "credentials:prod": "EAS_BUILD_PROFILE=production eas credentials",
     "prebuild": "expo prebuild",
-    "web": "expo start --web",
+    "web": "expo start -c --web",
     "check-types": "tsc --noEmit",
     "test": "jest",
     "eas-build-post-install": "if [ \"$EAS_BUILD_PROFILE\" = \"preview\" ] || [ \"$EAS_BUILD_PROFILE\" = \"production\" ]; then npm i -g @posthog/cli@$(node -p \"require('@posthog/cli/package.json').version\"); fi"

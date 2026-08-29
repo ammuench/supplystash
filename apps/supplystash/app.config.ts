@@ -57,7 +57,13 @@ const config: ExpoConfig = {
   },
   web: {
     bundler: "metro",
-    output: "static",
+    // Every route in this app sits behind auth, so there is nothing for a
+    // crawler to index and nothing worth prerendering. "static" would render
+    // each route through Node at build time, which buys no SEO here and costs
+    // a whole class of bug — components having to survive an environment with
+    // no window or localStorage, plus hydration mismatches. A marketing site,
+    // if we build one, is a separate deploy.
+    output: "single",
     favicon: "./assets/images/favicon.png",
   },
   plugins: [

@@ -2,9 +2,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import * as aesjs from "aes-js";
 import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 import "react-native-get-random-values";
 import "react-native-url-polyfill/auto";
-
 import type { Database } from "@/lib/database.types";
 
 import { env } from "@/lib/env";
@@ -67,13 +67,28 @@ export class LargeSecureStore {
   }
 }
 
+const isWeb = Platform.OS === "web";
+
+export const authConfig = {
+  // SecureStore has no web implementation, so LargeSecureStore is native-only.
+  // Passing no storage on web is deliberate: supabase-js falls back to
+  // localStorage in a browser and to an in-memory adapter when there is none,
+  // which is what keeps the `output: "static"` prerender (Node, no
+  // localStorage) from throwing. Reimplementing that here would only duplicate
+  // it worse.
+  //
+  // Note the asymmetry this leaves: a native session is AES-encrypted at rest,
+  // while a web session sits in localStorage as plaintext, readable by any
+  // script on the origin. That is the standard web tradeoff, not an oversight.
+  storage: isWeb ? undefined : new LargeSecureStore(),
+  autoRefreshToken: true,
+  persistSession: true,
+  // Web signs in through a redirect, so Supabase has to read the OAuth fragment
+  // out of the URL. React Native has no URL bar to read it from — deep links
+  // are handled explicitly by the auth flow instead.
+  detectSessionInUrl: isWeb,
+};
+
 export const supabase = createClient<Database>(env.supabaseUrl, env.supabasePublishableKey, {
-  auth: {
-    storage: new LargeSecureStore(),
-    autoRefreshToken: true,
-    persistSession: true,
-    // React Native has no URL bar for Supabase to read the OAuth fragment from;
-    // deep links are handled explicitly by the auth flow instead.
-    detectSessionInUrl: false,
-  },
+  auth: authConfig,
 });

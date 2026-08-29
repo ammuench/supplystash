@@ -22,11 +22,7 @@ function Alert({
   }) {
   return (
     <TextClassContext.Provider
-      value={cn(
-        "text-sm text-foreground",
-        variant === "destructive" && "text-destructive",
-        className,
-      )}
+      value={cn("text-sm text-foreground", variant === "destructive" && "text-destructive")}
     >
       <View
         role="alert"

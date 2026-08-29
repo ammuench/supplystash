@@ -1,18 +1,19 @@
 pre-commit:
   parallel: true
   jobs:
-    # Call the binaries directly rather than through `pnpm`: pnpm's
+    # Call the binaries by path rather than through `pnpm`: pnpm's
     # verify-deps-before-run check can trigger an interactive reinstall prompt,
-    # which hangs forever in a hook (no TTY). lefthook puts node_modules/.bin
-    # on PATH for us.
+    # which hangs forever in a hook (no TTY). lefthook does NOT put
+    # node_modules/.bin on PATH, so a bare `oxfmt` silently exits 127 and the
+    # formatter never runs. Jobs run from the repo root, so ./ resolves.
     - name: oxlint
-      run: oxlint {staged_files}
+      run: ./node_modules/.bin/oxlint {staged_files}
       glob: "*.{js,ts,vue,jsx,tsx}"
       stage_fixed: true
     - name: oxfmt
-      run: oxfmt {staged_files}
+      run: ./node_modules/.bin/oxfmt {staged_files}
       glob: "*.{js,ts,vue,jsx,tsx,json,md,css}"
       stage_fixed: true
     - name: squawk
-      run: squawk {staged_files}
+      run: ./node_modules/.bin/squawk {staged_files}
       glob: "supabase/migrations/*.sql"
