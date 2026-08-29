@@ -3,6 +3,7 @@ import { MoonStarIcon, StarIcon, SunIcon } from "lucide-react-native";
 import { Image, type ImageStyle, View } from "react-native";
 import { Uniwind, useUniwind } from "uniwind";
 
+import { AppSafeScreen } from "@/components/app-safe-screen";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
@@ -29,7 +30,7 @@ export default function Screen() {
   return (
     <>
       <Stack.Screen options={SCREEN_OPTIONS} />
-      <View className="flex-1 items-center justify-center gap-8 p-4">
+      <AppSafeScreen className="items-center justify-center gap-8 p-4">
         <Image source={LOGO[theme ?? "light"]} style={IMAGE_STYLE} resizeMode="contain" />
         <View className="gap-2 p-4">
           <Text className="font-mono text-sm text-muted-foreground ios:text-foreground">
@@ -52,7 +53,7 @@ export default function Screen() {
             </Button>
           </Link>
         </View>
-      </View>
+      </AppSafeScreen>
     </>
   );
 }

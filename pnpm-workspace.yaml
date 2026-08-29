@@ -7,3 +7,5 @@ allowBuilds:
   lefthook: true
   squawk-cli: true
   supabase: true
+minimumReleaseAgeExclude:
+  - expo-updates@56.0.26

@@ -8,10 +8,10 @@ for the design; this file covers setup and environment variables.
 ```bash
 pnpm install
 pnpm db:start          # start the local Supabase stack
-pnpm db:status         # prints the API URL and anon key
+pnpm db:status         # prints the API URL and publishable key
 
 cp apps/supplystash/.env.example apps/supplystash/.env
-# paste the anon key from db:status into EXPO_PUBLIC_SUPABASE_ANON_KEY
+# paste the publishable key from db:status into EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 pnpm dev:mobile        # or: pnpm dev:web
 ```
@@ -33,12 +33,12 @@ so read it before adding a new variable.
 
 ### Where each variable lives
 
-| Variable                        | Local dev                    | EAS build                            | CI                                 |
-| ------------------------------- | ---------------------------- | ------------------------------------ | ---------------------------------- |
-| `EXPO_PUBLIC_SUPABASE_URL`      | `apps/supplystash/.env`      | `eas.json` — `preview`, `production` | —                                  |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | `apps/supplystash/.env`      | `eas.json` — `preview`, `production` | —                                  |
-| `EAS_BUILD_PROFILE`             | set by the `build:*` scripts | `eas.json` — all profiles            | —                                  |
-| `SUPABASE_DB_URL_PROD`          | **never** — CI only          | —                                    | `SUPABASE_DB_URL_PROD` repo secret |
+| Variable                               | Local dev                    | EAS build                            | CI                                 |
+| -------------------------------------- | ---------------------------- | ------------------------------------ | ---------------------------------- |
+| `EXPO_PUBLIC_SUPABASE_URL`             | `apps/supplystash/.env`      | `eas.json` — `preview`, `production` | —                                  |
+| `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `apps/supplystash/.env`      | `eas.json` — `preview`, `production` | —                                  |
+| `EAS_BUILD_PROFILE`                    | set by the `build:*` scripts | `eas.json` — all profiles            | —                                  |
+| `SUPABASE_DB_URL_PROD`                 | **never** — CI only          | —                                    | `SUPABASE_DB_URL_PROD` repo secret |
 
 Adding a new `EXPO_PUBLIC_*` variable is a two-place edit: the local `.env`
 (plus the checked-in `.env.example`) and the `preview` + `production` env
