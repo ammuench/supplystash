@@ -1,8 +1,9 @@
 packages:
   - apps/*
-onlyBuiltDependencies:
-  - lefthook
-  - supabase
-  - "@parcel/watcher"
-  - esbuild
-  - squawk-cli
+# Never let a `pnpm run`/`pnpm exec` block on a reinstall prompt in a
+# non-interactive context (git hooks, CI).
+verifyDepsBeforeRun: false
+allowBuilds:
+  lefthook: true
+  squawk-cli: true
+  supabase: true
