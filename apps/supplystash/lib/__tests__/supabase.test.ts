@@ -14,7 +14,7 @@ const SESSION = JSON.stringify({
 
 const KEY = "sb-127-auth-token";
 
-describe("LargeSecureStore", () => {
+describe("# LargeSecureStore", () => {
   let storage: LargeSecureStore;
 
   beforeEach(async () => {

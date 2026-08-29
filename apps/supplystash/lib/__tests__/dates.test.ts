@@ -17,7 +17,7 @@ afterAll(() => {
   Settings.defaultZone = originalZone;
 });
 
-describe("parseIso", () => {
+describe("# parseIso", () => {
   it("returns null for empty and malformed input", () => {
     expect(parseIso(null)).toBeNull();
     expect(parseIso(undefined)).toBeNull();
@@ -25,13 +25,13 @@ describe("parseIso", () => {
   });
 });
 
-describe("formatDate", () => {
+describe("# formatDate", () => {
   it("falls back to an em dash when there is no date", () => {
     expect(formatDate(null)).toBe("—");
   });
 });
 
-describe("daysUntil", () => {
+describe("# daysUntil", () => {
   it("counts calendar days, not 24-hour spans", () => {
     // Later the same day is still 0 days out.
     expect(daysUntil("2026-08-29T23:00:00Z")).toBe(0);
@@ -40,7 +40,7 @@ describe("daysUntil", () => {
   });
 });
 
-describe("expiry states", () => {
+describe("# expiry states", () => {
   it("treats today as not yet expired", () => {
     expect(isExpired("2026-08-29T01:00:00Z")).toBe(false);
     expect(isExpiringSoon("2026-08-29T01:00:00Z")).toBe(true);

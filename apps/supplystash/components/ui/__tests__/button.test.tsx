@@ -5,7 +5,7 @@ import { Text } from "@/components/ui/text";
 
 // Smoke test for the whole jest-expo + uniwind + rn-primitives transform chain.
 // If this renders, the test runner is wired correctly for every other component.
-describe("Button", () => {
+describe("# Button", () => {
   it("renders its label", () => {
     render(
       <Button>

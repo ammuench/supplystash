@@ -19,7 +19,7 @@ const REQUIRED = {
   supabasePublishableKey: "sb_publishable_test",
 };
 
-describe("env", () => {
+describe("# env", () => {
   it("treats an empty string as absent, not as an invalid value", () => {
     // eas.json cannot express "not configured yet" except as "", and dotenv
     // turns a bare `KEY=` into "" too. Rejecting those would throw on launch
