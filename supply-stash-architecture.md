@@ -474,6 +474,9 @@ CREATE INDEX ON inventory_transactions (item_id) WHERE deleted = false;
 
 ### 5.3 Query keys, cache lifetime, and Realtime
 
+> **Canonical:** [`docs/query-keys.md`](docs/query-keys.md) + the factory in
+> `apps/supplystash/state/query-keys.ts`. Keep this section and that page in sync; the page wins.
+
 **`homeId` is part of every query key** — `['items', homeId]`, `['shoppingList', homeId]`, never
 one key per table invalidated on switch. The reason is not the switch-back spinner; it is that a
 bare `['items']` key **does not describe the data it holds**. On cold start you would rehydrate a
