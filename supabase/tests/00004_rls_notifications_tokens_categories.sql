@@ -73,9 +73,15 @@ grant select on fixture_ids to authenticated, anon, service_role;
 
 insert into fixture_ids (label, id)
 values
-  ('item', (select id from public.items where title = 'Laundry Detergent')),
-  ('cat_cleaning', (select id from public.categories where name = 'Cleaning')),
-  ('cat_bulk', (select id from public.categories where name = 'Bulk Buy'));
+  ('item', (select id from public.items
+            where home_id = (select home_id from test_state)
+              and title = 'Laundry Detergent')),
+  ('cat_cleaning', (select id from public.categories
+            where home_id = (select home_id from test_state)
+              and name = 'Cleaning')),
+  ('cat_bulk', (select id from public.categories
+            where home_id = (select home_id from test_state)
+              and name = 'Bulk Buy'));
 
 -- ============================================================
 -- notifications — private to the recipient, and client-unwritable
