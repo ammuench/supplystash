@@ -80,6 +80,10 @@ const config: ExpoConfig = {
     "expo-localization",
     "expo-secure-store",
     "expo-web-browser",
+    // Installed ahead of use so the Project 4 query-cache persister
+    // (expo-sqlite/kv-store) needs no dev-build rebuild. Not imported yet.
+    // See docs/persistence.md.
+    "expo-sqlite",
     // skipOnConflict: rebuilding the same version reuses a deterministic Hermes
     // chunk ID, so PostHog already holds that symbol set — skip the re-upload
     // rather than failing the build on content_hash_mismatch.

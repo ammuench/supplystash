@@ -545,6 +545,10 @@ works.
 
 ### 5.4 Persistence: two persisters, split by concern
 
+> **Canonical:** [`docs/persistence.md`](docs/persistence.md). Note the two-layer split: the
+> auth-session store (`LargeSecureStore`, shipped) is unrelated to the query-cache persister
+> below (Project 4). `expo-sqlite` is installed but unwired pending Project 4.
+
 **`expo-sqlite/kv-store` on native; no persistence on web.**
 
 Native backend: both `react-native-mmkv` and `expo-sqlite/kv-store` expose a sync read API and
