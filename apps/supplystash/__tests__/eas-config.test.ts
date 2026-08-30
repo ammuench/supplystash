@@ -1,13 +1,15 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-// Adding an EXPO_PUBLIC_* variable is a two-place edit: `.env.example` (the
-// local-dev template) and the `preview` + `production` env blocks in
-// `eas.json` (baked into store builds, which never see the local `.env`).
-// The docs say this three times because nothing enforced it — a key added to
-// one and not the other ships a build pointing at nothing, and it only
-// surfaces as an opaque failure on a real device. This suite is that
-// enforcement.
+// `eas.json` `preview` / `production` env blocks are baked into store builds,
+// which never see the local `.env`. Two failure modes this suite guards:
+//
+//   1. A required var (Supabase) missing from a baked profile → the build
+//      ships pointing at nothing, surfacing only as an opaque failure on a
+//      real device.
+//   2. Any env value set to "" → `eas build` rejects the whole file with
+//      "not allowed to be empty" before it starts. Omit the key instead;
+//      lib/env.ts and app.config.ts both treat absent as "not configured".
 
 const appRoot = join(__dirname, "..");
 
@@ -27,38 +29,47 @@ const easBuild = (
   }
 ).build;
 
+// Must be present with a real value in every baked profile — the app cannot
+// reach the backend without them.
+const REQUIRED_BAKED = {
+  EXPO_PUBLIC_SUPABASE_URL: /^https:\/\/.+/,
+  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: /^sb_publishable_.+/,
+} as const;
+
 const bakedProfiles = ["preview", "production"] as const;
 
-describe("# eas.json ⇄ .env.example mirror", () => {
+describe("# eas.json config", () => {
   it("finds the EXPO_PUBLIC_* keys in the template", () => {
-    // Guards the parser itself: if this ever reads zero keys, every assertion
-    // below passes vacuously.
+    // Guards the parser: zero keys would make the stray-key check vacuous.
     expect(envExampleKeys.size).toBeGreaterThan(0);
     expect(envExampleKeys).toContain("EXPO_PUBLIC_SUPABASE_URL");
-    expect(envExampleKeys).toContain("EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+  });
+
+  it("has no empty-string env value in any profile", () => {
+    // This is the exact shape `eas build` rejects up front.
+    const offenders: string[] = [];
+    for (const [profile, cfg] of Object.entries(easBuild)) {
+      for (const [key, value] of Object.entries(cfg.env ?? {})) {
+        if (value === "") offenders.push(`${profile}.env.${key}`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   describe.each(bakedProfiles)("## %s profile", (profile) => {
     const env = easBuild[profile]?.env ?? {};
 
-    it.each([...envExampleKeys])("mirrors %s from .env.example", (key) => {
-      // Presence, not value: an intentionally-blank key (analytics disabled
-      // until provisioned) is a conscious mirror; an absent one is the bug.
-      expect(Object.keys(env)).toContain(key);
+    it.each(Object.entries(REQUIRED_BAKED))("bakes a real %s", (key, pattern) => {
+      expect(env[key]).toMatch(pattern);
     });
 
-    it("carries no EXPO_PUBLIC_* key missing from .env.example", () => {
+    it("carries no EXPO_PUBLIC_* key absent from .env.example", () => {
+      // Optional keys (PostHog) may be omitted here until provisioned, but a
+      // key baked into the build that the template never documents is drift.
       const stray = Object.keys(env).filter(
         (key) => key.startsWith("EXPO_PUBLIC_") && !envExampleKeys.has(key),
       );
       expect(stray).toEqual([]);
-    });
-
-    it("has real Supabase values, not blanks", () => {
-      // Supabase is load-bearing for every screen — a blank here is a build
-      // that cannot reach the backend. PostHog keys are allowed to be blank.
-      expect(env.EXPO_PUBLIC_SUPABASE_URL).toMatch(/^https:\/\/.+/);
-      expect(env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY).toMatch(/^sb_publishable_.+/);
     });
   });
 
