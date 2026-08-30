@@ -38,5 +38,8 @@
     "supabase": "^2.91.1",
     "typescript": "^6.0.2"
   },
+  "engines": {
+    "node": "24.20.0"
+  },
   "packageManager": "pnpm@11.24.0"
 }
