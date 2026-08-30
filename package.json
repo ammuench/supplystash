@@ -10,6 +10,7 @@
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "check-types": "pnpm --filter @supplystash/app check-types",
+    "test": "pnpm --filter @supplystash/app test",
     "prepare": "lefthook install",
     "build:mobile:dev": "pnpm --filter @supplystash/app build:dev",
     "build:mobile:preview": "pnpm --filter @supplystash/app build:preview",
