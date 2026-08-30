@@ -50,9 +50,9 @@ so read it before adding a new variable.
 | -------------------------------------- | ---------------------------- | ------------------------------------ | ---------------------------------- |
 | `EXPO_PUBLIC_SUPABASE_URL`             | `apps/supplystash/.env`      | `eas.json` — `preview`, `production` | —                                  |
 | `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `apps/supplystash/.env`      | `eas.json` — `preview`, `production` | —                                  |
-| `EXPO_PUBLIC_POSTHOG_API_KEY`          | `apps/supplystash/.env`      | `eas.json` — `preview`, `production` | —                                  |
+| `EXPO_PUBLIC_POSTHOG_API_KEY`          | `apps/supplystash/.env`      | `eas.json` — omit until provisioned  | —                                  |
 | `EXPO_PUBLIC_POSTHOG_HOST`             | `apps/supplystash/.env`      | `eas.json` — `preview`, `production` | —                                  |
-| `POSTHOG_CLI_ENV_ID`                   | **never** — build only       | `eas.json` — `preview`, `production` | —                                  |
+| `POSTHOG_CLI_ENV_ID`                   | **never** — build only       | `eas.json` — omit until provisioned  | —                                  |
 | `POSTHOG_CLI_HOST`                     | **never** — build only       | `eas.json` — `preview`, `production` | —                                  |
 | `POSTHOG_CLI_TOKEN`                    | **never** — build only       | EAS secret                           | —                                  |
 | `EAS_BUILD_PROFILE`                    | set by the `build:*` scripts | `eas.json` — all profiles            | —                                  |
@@ -68,11 +68,14 @@ stay an EAS secret, never committed to `eas.json`.
 PostHog is on the **EU** region (`eu.i.posthog.com`) so event data stays in the
 EU. The project key is region-specific — a US host silently rejects events.
 
-Adding a new `EXPO_PUBLIC_*` variable is a two-place edit: the local `.env`
-(plus the checked-in `.env.example`) and the `preview` + `production` env
-blocks in `eas.json`. The `development` and `development-simulator` profiles
-are `developmentClient` builds that load JS from Metro at runtime, so they read
-your local `.env` and need nothing baked in.
+Adding a new **required** `EXPO_PUBLIC_*` variable is a two-place edit: the
+local `.env` (plus the checked-in `.env.example`) and the `preview` +
+`production` env blocks in `eas.json`. Optional keys (PostHog, until it is
+provisioned) are left out of `eas.json` entirely — **never** set to `""`, which
+`eas build` rejects with "not allowed to be empty". The `development` and
+`development-simulator` profiles are `developmentClient` builds that load JS
+from Metro at runtime, so they read your local `.env` and need nothing baked
+in. `apps/supplystash/__tests__/eas-config.test.ts` enforces these rules.
 
 Every `.env*` is gitignored at any depth; only the two `.env.example` files are
 tracked.
