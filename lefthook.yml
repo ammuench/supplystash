@@ -12,7 +12,7 @@ pre-commit:
       stage_fixed: true
     - name: oxfmt
       run: ./node_modules/.bin/oxfmt {staged_files}
-      glob: "*.{js,ts,vue,jsx,tsx,json,md,css}"
+      glob: "*.{js,ts,vue,jsx,tsx,json,md,css,yml,yaml}"
       stage_fixed: true
     - name: squawk
       run: ./node_modules/.bin/squawk {staged_files}
