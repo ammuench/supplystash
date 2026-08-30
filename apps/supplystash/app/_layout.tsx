@@ -7,12 +7,14 @@ import { Stack } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
 import { StatusBar } from "expo-status-bar";
 import { PostHogProvider } from "posthog-react-native";
+import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useUniwind, withUniwind } from "uniwind";
 
 import { posthog } from "@/lib/analytics";
+import { verifyEnvOnDevice } from "@/lib/dev/verify-env";
 import { queryClient } from "@/lib/query-client";
 import { NAV_THEME } from "@/lib/theme";
 
@@ -34,6 +36,11 @@ const AnalyticsProvider = ({ children }: { children: React.ReactNode }) =>
 
 export default function RootLayout() {
   const { theme } = useUniwind();
+
+  // STASH-8: temporary on-device env diagnostic. Remove with lib/dev/verify-env.ts.
+  useEffect(() => {
+    if (__DEV__) void verifyEnvOnDevice();
+  }, []);
 
   return (
     <StyledGestureHandlerRootView className="flex-1">
