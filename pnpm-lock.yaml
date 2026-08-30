@@ -134,6 +134,9 @@ importers:
       expo-splash-screen:
         specifier: ~56.0.11
         version: 56.0.14(expo@56.0.19)(supports-color@8.1.1)(typescript@6.0.3)
+      expo-sqlite:
+        specifier: ~56.0.6
+        version: 56.0.6(expo@56.0.19)(react-native@0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/jest-preset@0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       expo-status-bar:
         specifier: ~56.0.4
         version: 56.0.4(expo@56.0.19)(react-native@0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/jest-preset@0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
@@ -2444,6 +2447,9 @@ packages:
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
 
+  await-lock@2.2.2:
+    resolution: {integrity: sha512-aDczADvlvTGajTDjcjpJMqRkOF6Qdz3YbPZm/PyW6tKPkx2hlYBzxMhEywM/tU72HrVZjgl5VCdRuMlA7pZ8Gw==}
+
   babel-jest@29.7.0:
     resolution: {integrity: sha512-BrvGY3xZSwEcCzKvKsCi2GgHqDqsYkOP4/by5xCgIwGXQxIEh+8ew3gmrE1y7XRR6LHZIj6yLYnUi/mm2KXKBg==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
@@ -3181,6 +3187,13 @@ packages:
     resolution: {integrity: sha512-7cc09zKllBrmDGpbkVDiq09JBdpzyZMboOYNOd7Q+h4YbCbvkAW4WmZtxXLpZUEeBrc2uakxWyrz5nwcuHqMoQ==}
     peerDependencies:
       expo: '*'
+
+  expo-sqlite@56.0.6:
+    resolution: {integrity: sha512-HWUWW+Y9MMYcp0iZFRHSeFaGq/bvXEkOsFUjUXI8W5Cjh8V0F2hx56OWjDk0F6MFdB2pKwJ/ckxT16MDBgGscQ==}
+    peerDependencies:
+      expo: '*'
+      react: '*'
+      react-native: '*'
 
   expo-status-bar@56.0.4:
     resolution: {integrity: sha512-IGs/fDfkHXofy2ZQrGiXayhFK04HB85FZXorhcEhDZEcqASKgSqpak+HwUtAaR0MeTJwWyHNF7I6VmVbbp8EcA==}
@@ -8042,6 +8055,8 @@ snapshots:
 
   asynckit@0.4.0: {}
 
+  await-lock@2.2.2: {}
+
   babel-jest@29.7.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1):
     dependencies:
       '@babel/core': 7.29.7(supports-color@8.1.1)
@@ -8856,6 +8871,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
       - typescript
+
+  expo-sqlite@56.0.6(expo@56.0.19)(react-native@0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/jest-preset@0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3):
+    dependencies:
+      await-lock: 2.2.2
+      expo: 56.0.19(9bea14773e1d249348843add549b9337)
+      react: 19.2.3
+      react-native: 0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/jest-preset@0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1)
 
   expo-status-bar@56.0.4(expo@56.0.19)(react-native@0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/jest-preset@0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1))(@react-native/metro-config@0.85.3(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3):
     dependencies:
