@@ -1,73 +1,49 @@
-# Minimal Template
+# SupplyStash app
 
-This is a [React Native](https://reactnative.dev/) project built with [Expo](https://expo.dev/) and [React Native Reusables](https://reactnativereusables.com).
+The Expo client. Setup, environment variables, and database commands live in the
+[root README](../../README.md); this page covers the app package itself.
 
-It was initialized using the following command, then the `Minimal (Nativewind)` template was selected when prompted:
-
-```bash
-npx @react-native-reusables/cli@latest init
-```
-
-## Getting Started
-
-To run the development server:
+## Running it
 
 ```bash
-    npm run dev
-    # or
-    yarn dev
-    # or
-    pnpm dev
-    # or
-    bun dev
+pnpm dev          # Metro for a dev-client build (clears the cache)
+pnpm start        # same, without the cache clear
+pnpm web          # browser
+pnpm ios          # native run, requires a local prebuild
+pnpm android
 ```
 
-This will start the Expo Dev Server. Open the app in:
+A web crash with runaway `createOrderedCSSStyleSheet` recursion is a stale Metro
+cache, not a code bug — `pnpm dev` already passes `-c`.
 
-- **iOS**: press `i` to launch in the iOS simulator _(Mac only)_
-- **Android**: press `a` to launch in the Android emulator
-- **Web**: press `w` to run in a browser
-
-You can also scan the QR code using the [Expo Go](https://expo.dev/go) app on your device. This project fully supports running in Expo Go for quick testing on physical devices.
-
-## Adding components
-
-You can add more reusable components using the CLI:
+## Checks
 
 ```bash
-npx react-native-reusables/cli@latest add [...components]
+pnpm test         # jest (jest-expo preset)
+pnpm check-types  # tsc --noEmit
 ```
 
-> e.g. `npx react-native-reusables/cli@latest add input textarea`
+Formatting and linting are oxfmt + oxlint, wired into the pre-commit hook at the
+repo root — there is no prettier or eslint here.
 
-If you don't specify any component names, you'll be prompted to select which components to add interactively. Use the `--all` flag to install all available components at once.
+## Builds
 
-## Project Features
+EAS profiles are defined in `eas.json`; the `build:*` and `submit:*` scripts set
+`EAS_BUILD_PROFILE` and hand off to `eas`. `development` builds load JS from
+Metro, so they read your local `.env`; `preview` and `production` bake values
+from `eas.json`.
 
-- ⚛️ Built with [Expo Router](https://expo.dev/router)
-- 🎨 Styled with [Tailwind CSS](https://tailwindcss.com/) via [Uniwind](https://uniwind.dev/)
-- 📦 UI powered by [React Native Reusables](https://github.com/founded-labs/react-native-reusables)
-- 🚀 New Architecture enabled
-- 🔥 Edge to Edge enabled
-- 📱 Runs on iOS, Android, and Web
+## Layout
 
-## Learn More
+| Path          | Contents                                                                 |
+| ------------- | ------------------------------------------------------------------------ |
+| `app/`        | expo-router routes and layouts                                           |
+| `components/` | shared components; `components/ui` is the reusables primitive set        |
+| `lib/`        | Supabase client, env parsing, analytics, theme, helpers                  |
+| `state/`      | TanStack Query keys — see [docs/query-keys.md](../../docs/query-keys.md) |
+| `utils/`      | test helpers                                                             |
+| `__tests__/`  | package-level tests (EAS config rules)                                   |
 
-To dive deeper into the technologies used:
-
-- [React Native Docs](https://reactnative.dev/docs/getting-started)
-- [Expo Docs](https://docs.expo.dev/)
-- [Uniwind Docs](https://docs.uniwind.dev/)
-- [React Native Reusables](https://reactnativereusables.com)
-
-## Deploy with EAS
-
-The easiest way to deploy your app is with [Expo Application Services (EAS)](https://expo.dev/eas).
-
-- [EAS Build](https://docs.expo.dev/build/introduction/)
-- [EAS Updates](https://docs.expo.dev/eas-update/introduction/)
-- [EAS Submit](https://docs.expo.dev/submit/introduction/)
-
----
-
-If you enjoy using React Native Reusables, please consider giving it a ⭐ on [GitHub](https://github.com/founded-labs/react-native-reusables). Your support means a lot!
+Styling is uniwind/NativeWind. `global.css` is the source of truth; the tracked
+`oxfmt-tailwind.css` mirrors it so class sorting stays stable, since uniwind
+rewrites its copy inside `node_modules`.
