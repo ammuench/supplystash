@@ -28,6 +28,14 @@ const appIdentifier = isProduction
 // other PostHog feature is unaffected.
 const uploadSourceMaps = (isProduction || isPreview) && Boolean(process.env.POSTHOG_CLI_ENV_ID);
 
+// Each variant ships its own tinted icon so the three builds are
+// distinguishable on a home screen. The adaptive foregrounds are the same
+// artwork inset into Android's 66% safe zone, with the artwork's own backdrop
+// baked in — so the adaptiveIcon backgroundColor only shows in the margin.
+const iconVariant = isProduction ? "production" : isPreview ? "preview" : "development";
+const iconPath = `./assets/images/icons/icon-${iconVariant}.png`;
+const adaptiveIconPath = `./assets/images/icons/adaptive-icon-${iconVariant}.png`;
+
 const config: ExpoConfig = {
   name: isProduction ? "Supply Stash" : isPreview ? "Supply Stash Preview" : "Supply Stash Dev",
   slug: "supply-stash",
@@ -35,9 +43,7 @@ const config: ExpoConfig = {
   scheme: "supply-stash",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
-  // TODO: per-variant icons. ship three tinted sets so you can tell
-  // dev/preview/prod apart on the home screen; supplystash only has one so far.
-  icon: "./assets/images/icon.png",
+  icon: iconPath,
   assetBundlePatterns: ["**/*"],
   ios: {
     supportsTablet: true,
@@ -51,7 +57,7 @@ const config: ExpoConfig = {
     package: appIdentifier,
     userInterfaceStyle: "automatic",
     adaptiveIcon: {
-      foregroundImage: "./assets/images/adaptive-icon.png",
+      foregroundImage: adaptiveIconPath,
       backgroundColor: "#ffffff",
     },
   },
@@ -64,7 +70,7 @@ const config: ExpoConfig = {
     // no window or localStorage, plus hydration mismatches. A marketing site,
     // if we build one, is a separate deploy.
     output: "single",
-    favicon: "./assets/images/favicon.png",
+    favicon: iconPath,
   },
   plugins: [
     "expo-router",
