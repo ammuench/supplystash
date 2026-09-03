@@ -64,6 +64,39 @@ describe("# SessionProvider", () => {
     expect(result.current.user).toBe(USER);
   });
 
+  it("does not let a slow storage read overwrite a sign-in that landed first", async () => {
+    // Held open so the auth event provably wins the race the `settled` guard
+    // exists to arbitrate; resolving the mock up front would not test it.
+    let releaseStorage: (value: unknown) => void = () => {};
+    auth.getSession.mockReturnValue(
+      new Promise((resolve) => {
+        releaseStorage = resolve;
+      }) as never,
+    );
+
+    const { result } = renderSession();
+
+    act(() => emit("SIGNED_IN", SESSION));
+    expect(result.current.session).toBe(SESSION);
+
+    await act(async () => {
+      releaseStorage({ data: { session: null } });
+    });
+
+    expect(result.current.session).toBe(SESSION);
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it("settles signed-out when the session cannot be decrypted, rather than hanging the splash", async () => {
+    auth.getSession.mockRejectedValue(new Error("Could not decrypt session"));
+
+    const { result } = renderSession();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.session).toBeNull();
+    expect(result.current.user).toBeNull();
+  });
+
   it("clears the user on sign-out, so no stale identity survives", async () => {
     auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
     const { result } = renderSession();

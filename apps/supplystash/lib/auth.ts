@@ -4,38 +4,36 @@ import { AuthRetryableFetchError } from "@supabase/supabase-js";
 
 import { supabase } from "@/lib/supabase";
 
-// A stable, provider-agnostic vocabulary of failures. Screens switch on `code`
-// and never read supabase-js's own error shape, so adding OAuth later
-// (`signInWithProvider`) needs no new result type and no new mapping.
+// Provider-agnostic, so OAuth slots in later without a new result type.
 export type AuthErrorCode =
   | "invalid_credentials"
   | "email_taken"
   | "weak_password"
   | "invalid_email"
+  | "rate_limited"
   | "network"
   | "unknown";
 
 export type AuthFailure = { code: AuthErrorCode; message: string };
 
-// Auth returns a result rather than throwing: a wrong password is an expected
-// outcome of a form submit, and a screen should render it, not unmount into the
-// error boundary.
+// A result, not a throw: a wrong password is a form outcome to render, not an
+// error boundary to trip.
 export type AuthResult<T> = { ok: true; data: T } | { ok: false; error: AuthFailure };
 
 export type AuthSuccess = { session: Session; user: User };
 
-// supabase-js error codes, mapped to ours. Anything unlisted is `unknown` —
-// deliberately, so an unrecognized backend code surfaces as a generic failure
-// instead of being mislabelled as one we do understand.
+// supabase-js codes, mapped to ours. Anything unlisted falls to `unknown`
+// rather than the nearest-looking code — including `validation_failed`, which
+// is generic parameter validation and would wrongly blame the email field.
 const CODE_MAP: Record<string, AuthErrorCode> = {
   invalid_credentials: "invalid_credentials",
   email_not_confirmed: "invalid_credentials",
   user_already_exists: "email_taken",
   email_exists: "email_taken",
   weak_password: "weak_password",
-  validation_failed: "invalid_email",
   email_address_invalid: "invalid_email",
-  over_request_rate_limit: "network",
+  // Throttling, not connectivity — the remedy is to wait, not to reconnect.
+  over_request_rate_limit: "rate_limited",
 };
 
 // Takes an `AuthError`, not an email-specific input, so every future auth
@@ -45,8 +43,7 @@ const toAuthFailure = (error: AuthError): AuthFailure => ({
   message: error.message,
 });
 
-// Every method calls Supabase over the network, so a thrown fetch failure is as
-// likely as a returned `error`. Both paths have to end in the same result type.
+// A thrown fetch failure has to land in the same result type as a returned one.
 const toThrownFailure = (thrown: unknown): AuthFailure =>
   thrown instanceof AuthRetryableFetchError
     ? { code: "network", message: thrown.message }
@@ -55,10 +52,8 @@ const toThrownFailure = (thrown: unknown): AuthFailure =>
         message: thrown instanceof Error ? thrown.message : "Something went wrong.",
       };
 
-// `enable_confirmations = false` in supabase/config.toml means sign-up returns a
-// session immediately. If that ever changes, a caller holding `{ ok: true }`
-// with no session would be a silent bug — fail closed instead, so the contract
-// "success means you are signed in" always holds.
+// `enable_confirmations = false` (supabase/config.toml) means sign-up returns a
+// session. Fail closed if that changes, so `ok: true` always means signed in.
 const NO_SESSION: AuthFailure = {
   code: "unknown",
   message: "Signed up, but no session was returned.",

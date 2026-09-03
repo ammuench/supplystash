@@ -71,6 +71,39 @@ describe("# auth", () => {
       expect(result).toEqual({ ok: false, error: { code: "unknown", message: "Nope" } });
     });
 
+    it("distinguishes throttling from a network failure, as the remedy differs", async () => {
+      auth.signInWithPassword.mockResolvedValue({
+        data: { session: null, user: null },
+        error: apiError("over_request_rate_limit", "Request rate limit reached"),
+      } as never);
+
+      const result = await signInWithEmail("a@example.com", "hunter2hunter2");
+
+      expect(result).toMatchObject({ ok: false, error: { code: "rate_limited" } });
+    });
+
+    it("does not blame the email field for a generic parameter validation failure", async () => {
+      auth.signInWithPassword.mockResolvedValue({
+        data: { session: null, user: null },
+        error: apiError("validation_failed", "Validation failed"),
+      } as never);
+
+      const result = await signInWithEmail("a@example.com", "hunter2hunter2");
+
+      expect(result).toMatchObject({ ok: false, error: { code: "unknown" } });
+    });
+
+    it("points at the email field when the address itself is rejected", async () => {
+      auth.signInWithPassword.mockResolvedValue({
+        data: { session: null, user: null },
+        error: apiError("email_address_invalid", "Email address is invalid"),
+      } as never);
+
+      const result = await signInWithEmail("nope", "hunter2hunter2");
+
+      expect(result).toMatchObject({ ok: false, error: { code: "invalid_email" } });
+    });
+
     it("turns a thrown fetch failure into a result, so offline does not reject", async () => {
       auth.signInWithPassword.mockRejectedValue(
         new AuthRetryableFetchError("Network request failed", 0),

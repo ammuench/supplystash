@@ -31,12 +31,24 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       setIsLoading(false);
     });
 
-    void supabase.auth.getSession().then(({ data }) => {
-      if (!settled) {
-        setSession(data.session);
-        setIsLoading(false);
-      }
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!settled) {
+          setSession(data.session);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        // Reading the session decrypts it, which throws if the ciphertext or
+        // its SecureStore key is corrupt. Settling to signed-out costs the user
+        // a re-login; leaving `isLoading` true would hold the splash forever,
+        // with no way out but a reinstall.
+        if (!settled) {
+          setSession(null);
+          setIsLoading(false);
+        }
+      });
 
     return () => subscription.subscription.unsubscribe();
   }, []);
