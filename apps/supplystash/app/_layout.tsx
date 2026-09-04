@@ -15,6 +15,7 @@ import { useUniwind, withUniwind } from "uniwind";
 import { posthog } from "@/lib/analytics";
 import { queryClient } from "@/lib/query-client";
 import { NAV_THEME } from "@/lib/theme";
+import { SessionProvider } from "@/state/session";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -41,17 +42,21 @@ export default function RootLayout() {
         <KeyboardProvider>
           <ThemeProvider value={NAV_THEME[theme ?? "light"]}>
             <QueryClientProvider client={queryClient}>
-              <AnalyticsProvider>
-                <BottomSheetModalProvider>
-                  <StatusBar style={theme === "dark" ? "light" : "dark"} />
-                  <Stack />
-                  <PortalHost />
-                  {/* Toasts sit last so they render above the stack and the
-                      portal host, and inside SafeAreaProvider so they respect
-                      the notch. */}
-                  <Toasts />
-                </BottomSheetModalProvider>
-              </AnalyticsProvider>
+              {/* Inside QueryClientProvider: sign-out has to tear down the query
+                  cache (STASH-21), so the client must already exist above it. */}
+              <SessionProvider>
+                <AnalyticsProvider>
+                  <BottomSheetModalProvider>
+                    <StatusBar style={theme === "dark" ? "light" : "dark"} />
+                    <Stack />
+                    <PortalHost />
+                    {/* Toasts sit last so they render above the stack and the
+                        portal host, and inside SafeAreaProvider so they respect
+                        the notch. */}
+                    <Toasts />
+                  </BottomSheetModalProvider>
+                </AnalyticsProvider>
+              </SessionProvider>
             </QueryClientProvider>
           </ThemeProvider>
         </KeyboardProvider>
