@@ -1,6 +1,6 @@
 import type { AuthError, Session, User } from "@supabase/supabase-js";
 
-import { AuthRetryableFetchError } from "@supabase/supabase-js";
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 
 import { supabase } from "@/lib/supabase";
 
@@ -38,19 +38,29 @@ const CODE_MAP: Record<string, AuthErrorCode> = {
 
 // Takes an `AuthError`, not an email-specific input, so every future auth
 // method funnels through this one mapping.
-const toAuthFailure = (error: AuthError): AuthFailure => ({
-  code: (error.code && CODE_MAP[error.code]) ?? "unknown",
-  message: error.message,
-});
+const toAuthFailure = (error: AuthError): AuthFailure => {
+  // A dropped request is *returned*, not thrown: GoTrueClient catches its own
+  // AuthRetryableFetchError and hands it back in `error`. It carries no `code`,
+  // so without this check every offline attempt reads as `unknown`.
+  if (isAuthRetryableFetchError(error)) {
+    return { code: "network", message: error.message };
+  }
 
-// A thrown fetch failure has to land in the same result type as a returned one.
-const toThrownFailure = (thrown: unknown): AuthFailure =>
-  thrown instanceof AuthRetryableFetchError
-    ? { code: "network", message: thrown.message }
-    : {
-        code: "unknown",
-        message: thrown instanceof Error ? thrown.message : "Something went wrong.",
-      };
+  return { code: (error.code && CODE_MAP[error.code]) ?? "unknown", message: error.message };
+};
+
+// The client only rethrows what it does not recognize, so this is the residual
+// path — it still routes through the same mapping to keep the codes identical.
+const toThrownFailure = (thrown: unknown): AuthFailure => {
+  if (isAuthRetryableFetchError(thrown)) {
+    return { code: "network", message: thrown.message };
+  }
+
+  return {
+    code: "unknown",
+    message: thrown instanceof Error ? thrown.message : "Something went wrong.",
+  };
+};
 
 // `enable_confirmations = false` (supabase/config.toml) means sign-up returns a
 // session. Fail closed if that changes, so `ok: true` always means signed in.

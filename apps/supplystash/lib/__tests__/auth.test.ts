@@ -25,6 +25,10 @@ const SESSION = { access_token: "header.payload.signature", user: USER } as Sess
 // supabase-js reports a bad password as an AuthApiError carrying a `code`.
 const apiError = (code: string, message: string) => new AuthApiError(message, 400, code);
 
+// GoTrueClient catches this one itself and returns it in `error`, so it reaches
+// the mapper with no `code` at all — the shape an offline device produces.
+const OFFLINE = new AuthRetryableFetchError("Network request failed", 0);
+
 beforeEach(() => {
   jest.clearAllMocks();
 });
@@ -104,10 +108,11 @@ describe("# auth", () => {
       expect(result).toMatchObject({ ok: false, error: { code: "invalid_email" } });
     });
 
-    it("turns a thrown fetch failure into a result, so offline does not reject", async () => {
-      auth.signInWithPassword.mockRejectedValue(
-        new AuthRetryableFetchError("Network request failed", 0),
-      );
+    it("reports an offline attempt as network, not as an unexplained failure", async () => {
+      auth.signInWithPassword.mockResolvedValue({
+        data: { session: null, user: null },
+        error: OFFLINE,
+      } as never);
 
       const result = await signInWithEmail("a@example.com", "hunter2hunter2");
 
@@ -115,6 +120,14 @@ describe("# auth", () => {
         ok: false,
         error: { code: "network", message: "Network request failed" },
       });
+    });
+
+    it("still maps a fetch failure that escapes the client as a throw", async () => {
+      auth.signInWithPassword.mockRejectedValue(OFFLINE);
+
+      const result = await signInWithEmail("a@example.com", "hunter2hunter2");
+
+      expect(result).toMatchObject({ ok: false, error: { code: "network" } });
     });
   });
 
@@ -141,6 +154,18 @@ describe("# auth", () => {
       expect(result).toMatchObject({ ok: false, error: { code: "email_taken" } });
     });
 
+    it("reports an offline attempt as network, matching sign-in", async () => {
+      auth.signUp.mockResolvedValue({
+        data: { session: null, user: null },
+        error: OFFLINE,
+      } as never);
+
+      expect(await signUpWithEmail("new@example.com", "hunter2hunter2")).toMatchObject({
+        ok: false,
+        error: { code: "network" },
+      });
+    });
+
     it("fails closed when no session comes back, rather than reporting a signed-out success", async () => {
       auth.signUp.mockResolvedValue({ data: { session: null, user: USER }, error: null } as never);
 
@@ -155,6 +180,12 @@ describe("# auth", () => {
       auth.signOut.mockResolvedValue({ error: null } as never);
 
       expect(await signOut()).toEqual({ ok: true, data: null });
+    });
+
+    it("reports an offline attempt as network, matching sign-in", async () => {
+      auth.signOut.mockResolvedValue({ error: OFFLINE } as never);
+
+      expect(await signOut()).toMatchObject({ ok: false, error: { code: "network" } });
     });
 
     it("surfaces a failed sign-out instead of throwing mid-teardown", async () => {
