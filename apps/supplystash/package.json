@@ -110,7 +110,7 @@
       "./utils/testing/setupTests.ts"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!\\.pnpm)(?!((jest-)?react-native.*|@react-native(-community)?/.*|expo|expo-.*|exponent|@expo/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|native-base|uniwind|@rn-primitives/.*|@gorhom/.*|@backpackapp-io/.*|@faker-js/faker)/)"
+      "node_modules/(?!\\.pnpm)(?!((jest-)?react-native.*|@react-native(-community)?/.*|expo|expo-.*|exponent|@expo/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|native-base|uniwind|@rn-primitives/.*|@gorhom/.*|@backpackapp-io/.*|@faker-js/faker|standard-navigation|react-native-keyboard-controller)/)"
     ]
   }
 }

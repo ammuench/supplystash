@@ -35,6 +35,27 @@ jest.mock("expo-constants", () => ({
   },
 }));
 
+// react-native-keyboard-controller is a native module with no JS fallback —
+// importing it under jest throws "doesn't seem to be linked". The package ships
+// its own mock (ScrollView/View stand-ins for the keyboard-aware components),
+// which is what components/app-safe-screen.tsx needs to render at all.
+jest.mock(
+  "react-native-keyboard-controller",
+  () => require("react-native-keyboard-controller/jest") as unknown,
+);
+
+// @tanstack/form-core opens a devtools socket and retries on a 1s setInterval
+// that nothing clears, so every suite rendering a form leaves an open handle and
+// jest force-exits its worker. The devtools bridge is inert under test anyway.
+jest.mock("@tanstack/devtools-event-client", () => ({
+  EventClient: class {
+    on() {
+      return () => {};
+    }
+    emit() {}
+  },
+}));
+
 // The polyfill is a native module with no jest implementation; the crypto shim
 // below stands in for what it provides.
 jest.mock("react-native-get-random-values", () => ({}));
