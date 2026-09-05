@@ -10,25 +10,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Text } from "@/components/ui/text";
-import { signInWithEmail } from "@/lib/auth";
-import { signInSchema } from "@/lib/schemas/auth";
+import { signUpWithEmail } from "@/lib/auth";
+import { PASSWORD_MIN_LENGTH, signUpSchema } from "@/lib/schemas/auth";
 
-// Draft UI: the react-native-reusables sign-in block, minus its social buttons
-// and forgot-password link (no OAuth and no reset flow exist yet). Real designs
-// are pending — the logic underneath is the point.
-export default function SignInScreen() {
+// Five rules is too many to discover one rejection at a time, so the policy is
+// stated up front rather than only after a failed attempt.
+const PASSWORD_HINT = `At least ${PASSWORD_MIN_LENGTH} characters, with an uppercase letter, a lowercase letter, a number, and a special character.`;
+
+// Draft UI: the react-native-reusables sign-up block, minus its social buttons
+// (no OAuth exists yet). Real designs are pending — the logic underneath is the
+// point.
+export default function SignUpScreen() {
   const passwordInputRef = useRef<TextInput>(null);
-  // Supabase failures are form-level: a rejected credential pair does not belong
-  // to either field on its own.
+  // Supabase failures are form-level: "email already registered" belongs to the
+  // attempt, not to a single field's syntax.
   const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm({
     defaultValues: { email: "", password: "" },
-    validators: { onBlur: signInSchema, onSubmit: signInSchema },
+    validators: { onBlur: signUpSchema, onSubmit: signUpSchema },
     onSubmit: async ({ value }) => {
       setFormError(null);
 
-      const result = await signInWithEmail(value.email, value.password);
+      const result = await signUpWithEmail(value.email, value.password);
       if (!result.ok) {
         setFormError(result.error.message);
       }
@@ -42,9 +46,9 @@ export default function SignInScreen() {
     <AppSafeScrollScreen contentContainerClassName="flex-grow justify-center gap-6 p-4">
       <Card className="border-border/0 shadow-none sm:border-border sm:shadow-sm sm:shadow-black/5">
         <CardHeader>
-          <CardTitle className="text-center text-xl sm:text-left">Sign in to SupplyStash</CardTitle>
+          <CardTitle className="text-center text-xl sm:text-left">Create your account</CardTitle>
           <CardDescription className="text-center sm:text-left">
-            Welcome back! Please sign in to continue.
+            Welcome! Please fill in the details to get started.
           </CardDescription>
         </CardHeader>
         <CardContent className="gap-6">
@@ -83,13 +87,14 @@ export default function SignInScreen() {
                     id="password"
                     aria-label="Password"
                     secureTextEntry
-                    autoComplete="current-password"
+                    autoComplete="new-password"
                     value={field.state.value}
                     onChangeText={field.handleChange}
                     onBlur={field.handleBlur}
                     onSubmitEditing={() => void form.handleSubmit()}
                     returnKeyType="send"
                   />
+                  <Text className="text-sm text-muted-foreground">{PASSWORD_HINT}</Text>
                   <FormFieldErrors errors={field.state.meta.errors} />
                 </View>
               )}
@@ -104,16 +109,16 @@ export default function SignInScreen() {
                   disabled={isSubmitting}
                   onPress={() => void form.handleSubmit()}
                 >
-                  <Text>{isSubmitting ? "Signing in…" : "Continue"}</Text>
+                  <Text>{isSubmitting ? "Creating account…" : "Continue"}</Text>
                 </Button>
               )}
             </form.Subscribe>
           </View>
 
           <Text className="text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Link href="/sign-up" className="underline underline-offset-4">
-              Sign up
+            Already have an account?{" "}
+            <Link href="/sign-in" className="underline underline-offset-4">
+              Sign in
             </Link>
           </Text>
         </CardContent>
