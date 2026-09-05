@@ -28,6 +28,9 @@ const signUpPasswordSchema = z
   .regex(/[A-Z]/, "Password must include an uppercase letter.")
   .regex(/[a-z]/, "Password must include a lowercase letter.")
   .regex(/\d/, "Password must include a number.")
+  // TODO(STASH-20): the message says "special character" but the set is fixed, so a
+  // password containing only "€" is told to add what it already has. Name the allowed
+  // set in the message once the auth flows are settled.
   .regex(SPECIAL_CHARACTER_PATTERN, "Password must include a special character.");
 
 // Sign-in deliberately checks only for presence. Applying the sign-up policy here
