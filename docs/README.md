@@ -10,5 +10,6 @@ land here.
 | ---------------------------------- | ----------------------------------------------------------------------------------------- |
 | [query-keys.md](./query-keys.md)   | TanStack Query key convention — `homeId` in every key, the factory, how to add a new key. |
 | [persistence.md](./persistence.md) | The two persistence layers (auth session vs. query cache) and what backs each.            |
+| [forms.md](./forms.md)             | TanStack Form + zod convention — where schemas live, how errors render.                   |
 
 Setup and environment variables live in the [root README](../README.md).
