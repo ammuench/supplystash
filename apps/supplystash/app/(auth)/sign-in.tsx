@@ -1,4 +1,4 @@
-import { useForm } from "@tanstack/react-form";
+import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { Link } from "expo-router";
 import { useRef, useState } from "react";
 import { type TextInput, View } from "react-native";
@@ -24,7 +24,14 @@ export default function SignInScreen() {
 
   const form = useForm({
     defaultValues: { email: "", password: "" },
-    validators: { onBlur: signInSchema, onSubmit: signInSchema },
+    // Validate on Continue, then on every keystroke once the user has pressed it.
+    // A form-level `onBlur` validator runs the whole schema on any single field's
+    // blur, so jumping from email to password stamped "Enter your password." onto
+    // a field the user had not filled in yet. Typing never cleared it — a change
+    // event only refreshes the change slot, not the blur one — so `canSubmit`
+    // stayed false and `handleSubmit` bailed out silently on the first press.
+    validationLogic: revalidateLogic(),
+    validators: { onDynamic: signInSchema },
     onSubmit: async ({ value }) => {
       setFormError(null);
 

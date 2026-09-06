@@ -61,6 +61,23 @@ describe("# SignInScreen", () => {
 
       expect(mockSignInWithEmail).toHaveBeenCalledWith("stash@example.com", "old");
     });
+
+    // Regression (STASH-20): the form used to validate on blur, which meant moving
+    // from email to password marked the still-empty password field, and typing did
+    // not clear that message. `canSubmit` stayed false and `handleSubmit` returned
+    // without a word, so Continue looked dead until the user tapped out of the
+    // field. `skipBlur` keeps the caret in the password input, as a real press does.
+    it("submits on the first press while the password field still holds focus", async () => {
+      const user = userEvent.setup();
+      succeeds();
+      render(<SignInScreen />);
+
+      await user.type(screen.getByLabelText("Email"), "stash@example.com");
+      await user.type(screen.getByLabelText("Password"), "hunter2", { skipBlur: true });
+      await user.press(screen.getByText("Continue"));
+
+      expect(mockSignInWithEmail).toHaveBeenCalledWith("stash@example.com", "hunter2");
+    });
   });
 
   describe("## submission", () => {

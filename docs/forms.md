@@ -9,7 +9,8 @@ schema goes straight into `validators`. No resolver package is necessary.
 ```tsx
 const form = useForm({
   defaultValues: { email: "", password: "" },
-  validators: { onBlur: signInSchema, onSubmit: signInSchema },
+  validationLogic: revalidateLogic(),
+  validators: { onDynamic: signInSchema },
   onSubmit: async ({ value }) => {
     /* ... */
   },
@@ -19,14 +20,21 @@ const form = useForm({
 - **Schemas live in `apps/supplystash/lib/schemas/`**, one file for each domain
   (`apps/supplystash/lib/schemas/auth.ts`). The schema holds the messages that the user reads, thus
   the screen contains no message text.
-- **Validate on `onBlur` and on `onSubmit`.** Validation on each keystroke tells the user that the
-  input is incorrect before the user completes it.
+- **Validate with `revalidateLogic()` and a single `onDynamic` validator.** The schema then runs
+  when the user presses the submit button, and on each keystroke afterwards. The user thus reads no
+  message before finishing the form, and a correction clears the message at once.
+
+  Do not use `onBlur` at form level. A form-level validator checks the whole schema whenever any one
+  field blurs, thus a jump from email to password marks the empty password field. A later keystroke
+  does not clear that message, because a change event refreshes only the change slot. `canSubmit`
+  stays `false`, and `handleSubmit` then returns without a word on the first press — the button
+  appears dead until the user blurs the field.
+
 - **Write one check for each rule.** Zod reports all failed checks. A password that has no digit and
   no symbol thus shows two messages, not one general message.
 - **Show field errors with `<FormFieldErrors errors={field.state.meta.errors} />`**
   (`apps/supplystash/components/form-field-errors.tsx`). Standard Schema supplies issue objects, not
-  strings. The component extracts the messages and removes the duplicates that the two validators
-  cause.
+  strings. The component extracts the messages.
 - **Put the label on the input with `aria-label`.** The `htmlFor` property of `Label` makes an
   association only on the web. Native platforms need the label on the input.
 

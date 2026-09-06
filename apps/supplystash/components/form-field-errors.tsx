@@ -8,9 +8,9 @@ export type FormFieldErrorsProps = {
 };
 
 // Standard Schema validators hand back issue objects, not strings, so a bare
-// `errors.join()` renders "[object Object]". The same schema runs on both blur
-// and submit, so a field can hold two copies of one message — dedupe rather than
-// telling the user the same thing twice.
+// `errors.join()` renders "[object Object]". The dedupe is belt-and-braces: one
+// `onDynamic` validator writes a single slot, but a form that adds a second
+// validator would otherwise repeat a message the user has already read.
 const toMessages = (errors: readonly unknown[]) => [
   ...new Set(
     errors.map((error) =>
