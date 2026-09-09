@@ -4,7 +4,7 @@ import { AppSafeScreen } from "@/components/app-safe-screen";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { signOut } from "@/lib/auth";
-import { toastError } from "@/lib/toast";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 // Stub screen — real designs are pending; inventory lands in project 6.
 // Temporary placement: the real account screen lands in the Auth gate +
@@ -21,7 +21,9 @@ export default function SettingsScreen() {
     setIsSigningOut(true);
     try {
       const result = await signOut();
-      if (!result.ok) {
+      if (result.ok) {
+        toastSuccess("Signed out");
+      } else {
         toastError(result.error.message);
       }
     } finally {
