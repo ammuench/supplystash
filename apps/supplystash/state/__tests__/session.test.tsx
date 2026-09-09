@@ -2,6 +2,7 @@ import type { Session, User } from "@supabase/supabase-js";
 
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 
+import { queryClient } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
 import { SessionProvider, useSession } from "@/state/session";
 
@@ -16,7 +17,12 @@ jest.mock("@/lib/supabase", () => ({
   },
 }));
 
+jest.mock("@/lib/query-client", () => ({
+  queryClient: { clear: jest.fn() },
+}));
+
 const auth = supabase.auth as jest.Mocked<typeof supabase.auth>;
+const clearCache = queryClient.clear as jest.Mock;
 
 const USER = { id: "00000000-0000-0000-0000-000000000000" } as User;
 const SESSION = { access_token: "header.payload.signature", user: USER } as Session;
@@ -106,6 +112,26 @@ describe("# SessionProvider", () => {
 
     expect(result.current.session).toBeNull();
     expect(result.current.user).toBeNull();
+  });
+
+  it("clears the query cache on sign-out, so the next account reads no cached rows", async () => {
+    auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.session).toBe(SESSION));
+
+    act(() => emit("SIGNED_OUT", null));
+
+    expect(clearCache).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the query cache alone on sign-in", async () => {
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => emit("SIGNED_IN", SESSION));
+
+    expect(result.current.session).toBe(SESSION);
+    expect(clearCache).not.toHaveBeenCalled();
   });
 
   it("throws when used outside the provider, rather than reporting a signed-out user", () => {
