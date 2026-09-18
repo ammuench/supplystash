@@ -3,6 +3,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
 import { AppState, Platform } from "react-native";
 
+import { queryClient } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
 
 type SessionContextValue = {
@@ -25,8 +26,15 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
     // initial read win if nothing has arrived ahead of it.
     let settled = false;
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, nextSession) => {
       settled = true;
+      // Tear down here, not in the sign-out button, so token-expiry and remote
+      // sign-outs get the same treatment. RLS filters server rows but does
+      // nothing to the client cache — without this the next account to sign in
+      // on the same process reads the previous user's cached rows.
+      if (event === "SIGNED_OUT") {
+        queryClient.clear();
+      }
       setSession(nextSession);
       setIsLoading(false);
     });

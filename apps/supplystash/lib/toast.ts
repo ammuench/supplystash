@@ -1,4 +1,6 @@
-import { toast } from "@backpackapp-io/react-native-toast";
+import type { ToastOptions } from "@backpackapp-io/react-native-toast";
+
+import { ToastPosition, toast } from "@backpackapp-io/react-native-toast";
 
 import { hapticError, hapticSuccess } from "@/lib/haptics";
 
@@ -6,17 +8,21 @@ import { hapticError, hapticSuccess } from "@/lib/haptics";
 // can be swapped and so every toast carries the matching haptic without each
 // caller remembering to fire one.
 
+// Bottom by default: the top of the screen is the notch/status-bar area and
+// the header, and a toast there covers navigation the user may be reaching for.
+const DEFAULT_POSITION: ToastOptions = { position: ToastPosition.BOTTOM };
+
 export const toastSuccess = (message: string) => {
   void hapticSuccess();
-  return toast.success(message);
+  return toast.success(message, DEFAULT_POSITION);
 };
 
 export const toastError = (message: string) => {
   void hapticError();
-  return toast.error(message);
+  return toast.error(message, DEFAULT_POSITION);
 };
 
-export const toastInfo = (message: string) => toast(message);
+export const toastInfo = (message: string) => toast(message, DEFAULT_POSITION);
 
 /**
  * Tie a toast to a promise: spinner while pending, then success or error. Use
@@ -25,6 +31,6 @@ export const toastInfo = (message: string) => toast(message);
 export const toastPromise = <T>(
   promise: Promise<T>,
   messages: { loading: string; success: string; error: string },
-) => toast.promise(promise, messages);
+) => toast.promise(promise, messages, DEFAULT_POSITION);
 
 export const dismissToast = (id?: string) => toast.dismiss(id);
