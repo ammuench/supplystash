@@ -160,6 +160,22 @@ describe("# SessionProvider", () => {
     expect(clearCache).toHaveBeenCalledTimes(1);
   });
 
+  it("re-reads the sign-out intent per event, so an expiry after a voluntary sign-out still announces itself", async () => {
+    consumeSignOutIntent.mockReturnValueOnce(true).mockReturnValue(false);
+    auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.session).toBe(SESSION));
+
+    act(() => emit("SIGNED_OUT", null));
+
+    expect(showInfoToast).not.toHaveBeenCalled();
+
+    act(() => emit("SIGNED_IN", SESSION));
+    act(() => emit("SIGNED_OUT", null));
+
+    expect(showInfoToast).toHaveBeenCalledWith(SESSION_EXPIRED_MESSAGE);
+  });
+
   it("leaves the query cache alone on sign-in", async () => {
     const { result } = renderSession();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
