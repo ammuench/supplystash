@@ -2,9 +2,11 @@ import type { Session, User } from "@supabase/supabase-js";
 
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 
+import { consumeUserInitiatedSignOut } from "@/lib/auth";
 import { queryClient } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
-import { SessionProvider, useSession } from "@/state/session";
+import { toastInfo } from "@/lib/toast";
+import { SESSION_EXPIRED_MESSAGE, SessionProvider, useSession } from "@/state/session";
 
 jest.mock("@/lib/supabase", () => ({
   supabase: {
@@ -21,8 +23,18 @@ jest.mock("@/lib/query-client", () => ({
   queryClient: { clear: jest.fn() },
 }));
 
+jest.mock("@/lib/auth", () => ({
+  consumeUserInitiatedSignOut: jest.fn(),
+}));
+
+jest.mock("@/lib/toast", () => ({
+  toastInfo: jest.fn(),
+}));
+
 const auth = supabase.auth as jest.Mocked<typeof supabase.auth>;
 const clearCache = queryClient.clear as jest.Mock;
+const consumeSignOutIntent = consumeUserInitiatedSignOut as jest.Mock;
+const showInfoToast = toastInfo as jest.Mock;
 
 const USER = { id: "00000000-0000-0000-0000-000000000000" } as User;
 const SESSION = { access_token: "header.payload.signature", user: USER } as Session;
@@ -38,6 +50,7 @@ beforeEach(() => {
     return { data: { subscription: { unsubscribe: jest.fn() } } };
   }) as never);
   auth.getSession.mockResolvedValue({ data: { session: null } } as never);
+  consumeSignOutIntent.mockReturnValue(false);
 });
 
 const renderSession = () => renderHook(() => useSession(), { wrapper: SessionProvider });
@@ -122,6 +135,45 @@ describe("# SessionProvider", () => {
     act(() => emit("SIGNED_OUT", null));
 
     expect(clearCache).toHaveBeenCalledTimes(1);
+  });
+
+  it("announces an involuntary sign-out, so an expired token does not read as a crash", async () => {
+    auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.session).toBe(SESSION));
+
+    act(() => emit("SIGNED_OUT", null));
+
+    expect(showInfoToast).toHaveBeenCalledWith(SESSION_EXPIRED_MESSAGE);
+    expect(clearCache).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays quiet on a user-initiated sign-out, which already toasts its own message", async () => {
+    consumeSignOutIntent.mockReturnValue(true);
+    auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.session).toBe(SESSION));
+
+    act(() => emit("SIGNED_OUT", null));
+
+    expect(showInfoToast).not.toHaveBeenCalled();
+    expect(clearCache).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-reads the sign-out intent per event, so an expiry after a voluntary sign-out still announces itself", async () => {
+    consumeSignOutIntent.mockReturnValueOnce(true).mockReturnValue(false);
+    auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.session).toBe(SESSION));
+
+    act(() => emit("SIGNED_OUT", null));
+
+    expect(showInfoToast).not.toHaveBeenCalled();
+
+    act(() => emit("SIGNED_IN", SESSION));
+    act(() => emit("SIGNED_OUT", null));
+
+    expect(showInfoToast).toHaveBeenCalledWith(SESSION_EXPIRED_MESSAGE);
   });
 
   it("leaves the query cache alone on sign-in", async () => {
