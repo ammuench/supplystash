@@ -3,8 +3,13 @@ import type { Session, User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
 import { AppState, Platform } from "react-native";
 
+import { consumeUserInitiatedSignOut } from "@/lib/auth";
 import { queryClient } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
+import { toastInfo } from "@/lib/toast";
+
+// Exported so the test asserts on the same string the user reads.
+export const SESSION_EXPIRED_MESSAGE = "Your session expired — please sign in again.";
 
 type SessionContextValue = {
   session: Session | null;
@@ -34,6 +39,13 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       // on the same process reads the previous user's cached rows.
       if (event === "SIGNED_OUT") {
         queryClient.clear();
+        // Supabase emits this same event when a refresh token is rejected.
+        // Unannounced, being bounced to sign-in mid-session reads as a crash or
+        // a random logout. The deliberate path already toasts "Signed out", so
+        // only the involuntary one is announced here.
+        if (!consumeUserInitiatedSignOut()) {
+          toastInfo(SESSION_EXPIRED_MESSAGE);
+        }
       }
       setSession(nextSession);
       setIsLoading(false);

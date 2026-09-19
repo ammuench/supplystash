@@ -104,15 +104,40 @@ export const signInWithEmail = async (
   }
 };
 
+// A deliberate sign-out and a rejected refresh token both reach
+// `onAuthStateChange` as the same `SIGNED_OUT` event, and only the caller knows
+// which it is. `signOut` leaves a mark here for the listener to read.
+let userInitiatedSignOut = false;
+
+/**
+ * True if the `SIGNED_OUT` about to be handled came from `signOut`. Reading it
+ * clears it, so a later involuntary sign-out is not mistaken for this one.
+ */
+export const consumeUserInitiatedSignOut = () => {
+  const wasUserInitiated = userInitiatedSignOut;
+  userInitiatedSignOut = false;
+
+  return wasUserInitiated;
+};
+
 export const signOut = async (): Promise<AuthResult<null>> => {
+  // Set before the call, not after: supabase emits the event from inside
+  // `signOut`, so a mark set afterwards would arrive too late to be read.
+  userInitiatedSignOut = true;
   try {
     const { error } = await supabase.auth.signOut();
     if (error) {
+      // No event fired, so the mark would otherwise sit here and swallow the
+      // expired-session notice on whatever involuntary sign-out comes next.
+      userInitiatedSignOut = false;
+
       return { ok: false, error: toAuthFailure(error) };
     }
 
     return { ok: true, data: null };
   } catch (thrown) {
+    userInitiatedSignOut = false;
+
     return { ok: false, error: toThrownFailure(thrown) };
   }
 };
