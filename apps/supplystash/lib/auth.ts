@@ -1,6 +1,9 @@
 import type { AuthError, Session, User } from "@supabase/supabase-js";
 
 import { isAuthRetryableFetchError } from "@supabase/supabase-js";
+import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
+import { Platform } from "react-native";
 
 import { supabase } from "@/lib/supabase";
 
@@ -11,6 +14,12 @@ export type AuthErrorCode =
   | "weak_password"
   | "invalid_email"
   | "rate_limited"
+  // The user closed the in-app browser before the provider redirected. Not a
+  // failure to report — the screen should fall silent and let them try again.
+  | "cancelled"
+  // Web only: the page is navigating to the provider, so this process is about
+  // to be torn down and no result will ever come back through the promise.
+  | "redirecting"
   | "network"
   | "unknown";
 
@@ -99,6 +108,120 @@ export const signInWithEmail = async (
     }
 
     return { ok: true, data: { session: data.session, user: data.user } };
+  } catch (thrown) {
+    return { ok: false, error: toThrownFailure(thrown) };
+  }
+};
+
+export type OAuthProvider = "google" | "apple";
+
+// The one path segment the OAuth callback owns. Kept a constant because it has
+// to match `additional_redirect_urls` in supabase/config.toml exactly, and the
+// route file name (app/auth-callback.tsx) that catches it on web.
+//
+// It is a *path*, not the root, because this scheme is shared: household invite
+// deep links (supply-stash://invite/<token>) land on the same one later, and the
+// architecture doc warns that separating them after the fact is painful.
+export const AUTH_CALLBACK_PATH = "auth-callback";
+
+// Provider errors arrive as URL parameters, not as an AuthError, so there is no
+// instance to hand `toAuthFailure`. `access_denied` is the provider's word for
+// the user declining at the consent screen, which is the same outcome as
+// closing the browser.
+const oauthUrlFailure = (error: string, description: string | null): AuthFailure => ({
+  code: error === "access_denied" ? "cancelled" : "unknown",
+  message: description ?? error,
+});
+
+// Supabase appends the tokens as a fragment and its errors as a query string.
+// Split by hand rather than with `new URL`: the native redirect uses a custom
+// scheme, which URL implementations treat as opaque and inconsistently expose a
+// `hash` for. Both halves are still parsed as real parameters.
+const paramsFromCallbackUrl = (url: string) => {
+  const [withoutFragment, fragment = ""] = url.split("#");
+  const query = withoutFragment.split("?")[1] ?? "";
+
+  return new URLSearchParams(`${query}&${fragment}`);
+};
+
+// No provider is enabled yet (STASH-23 / STASH-24 supply the credentials), so
+// nothing calls this outside tests.
+export const signInWithProvider = async (
+  provider: OAuthProvider,
+): Promise<AuthResult<AuthSuccess>> => {
+  try {
+    const redirectTo = Linking.createURL(AUTH_CALLBACK_PATH);
+
+    // Web is a redirect, not a round trip: supabase-js navigates the whole page
+    // to the provider, this process ends, and the session is read back out of
+    // the URL on the next load by `detectSessionInUrl` (see lib/supabase.ts).
+    // So there is nothing to await and no session to return — only the failure
+    // to start the redirect at all is reportable.
+    if (Platform.OS === "web") {
+      const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
+      if (error) {
+        return { ok: false, error: toAuthFailure(error) };
+      }
+
+      return {
+        ok: false,
+        error: { code: "redirecting", message: "Redirecting to the provider." },
+      };
+    }
+
+    // `skipBrowserRedirect` because there is no window to navigate on native —
+    // we want the URL handed back so it can be opened in an auth session
+    // instead.
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
+    if (error) {
+      return { ok: false, error: toAuthFailure(error) };
+    }
+    if (!data.url) {
+      return { ok: false, error: { code: "unknown", message: "No provider URL was returned." } };
+    }
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    // `dismiss` is the iOS swipe-down, `cancel` the explicit Done button; both
+    // mean the user backed out. Anything else is a browser that never opened.
+    if (result.type === "cancel" || result.type === "dismiss") {
+      return { ok: false, error: { code: "cancelled", message: "Sign-in was cancelled." } };
+    }
+    if (result.type !== "success") {
+      return { ok: false, error: { code: "unknown", message: "The sign-in browser closed." } };
+    }
+
+    const params = paramsFromCallbackUrl(result.url);
+
+    const providerError = params.get("error");
+    if (providerError) {
+      return { ok: false, error: oauthUrlFailure(providerError, params.get("error_description")) };
+    }
+
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+    if (!accessToken || !refreshToken) {
+      return { ok: false, error: { code: "unknown", message: "No session was returned." } };
+    }
+
+    // Native has no URL bar for GoTrue to read, so the tokens are handed over
+    // explicitly. This is what persists the session through LargeSecureStore and
+    // fires the SIGNED_IN that state/session.tsx is waiting on.
+    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (sessionError) {
+      return { ok: false, error: toAuthFailure(sessionError) };
+    }
+    // Not NO_SESSION: that one's wording is sign-up specific.
+    if (!sessionData.session || !sessionData.user) {
+      return { ok: false, error: { code: "unknown", message: "No session was returned." } };
+    }
+
+    return { ok: true, data: { session: sessionData.session, user: sessionData.user } };
   } catch (thrown) {
     return { ok: false, error: toThrownFailure(thrown) };
   }

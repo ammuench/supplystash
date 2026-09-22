@@ -108,7 +108,16 @@ enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails. Unset: the app is Expo-only, so there is no web origin to point at.
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = []
+# The OAuth callback (STASH-22). `auth-callback` is a path, not the scheme root, because
+# household invite deep links share this scheme later.
+#
+#   - The native entry must match `Linking.createURL(AUTH_CALLBACK_PATH)` in lib/auth.ts exactly.
+#   - 8081 is the Metro default for `pnpm web`. These are exact strings with no wildcards, so
+#     another web dev port, a LAN host, or a deployed web origin each need their own line.
+#   - Under Expo Go / a dev client, `createURL` produces `exp://<host>:8081/--/auth-callback`,
+#     which is host-dependent and so cannot be listed. Native OAuth against this stack needs a
+#     dev build using the custom scheme.
+additional_redirect_urls = ["supply-stash://auth-callback", "http://localhost:8081/auth-callback"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # If disabled, the refresh token will never expire.

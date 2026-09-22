@@ -1,8 +1,10 @@
 import type { Session, User } from "@supabase/supabase-js";
 
 import { AuthApiError, AuthRetryableFetchError } from "@supabase/supabase-js";
+import * as WebBrowser from "expo-web-browser";
+import { Platform } from "react-native";
 
-import { signInWithEmail, signOut, signUpWithEmail } from "@/lib/auth";
+import { signInWithEmail, signInWithProvider, signOut, signUpWithEmail } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
 // `lib/supabase` is mocked rather than the network: these wrappers own the
@@ -12,12 +14,27 @@ jest.mock("@/lib/supabase", () => ({
     auth: {
       signUp: jest.fn(),
       signInWithPassword: jest.fn(),
+      signInWithOAuth: jest.fn(),
+      setSession: jest.fn(),
       signOut: jest.fn(),
     },
   },
 }));
 
 const auth = supabase.auth as jest.Mocked<typeof supabase.auth>;
+const openAuthSession = jest.mocked(WebBrowser.openAuthSessionAsync);
+
+const REDIRECT_URL = "supply-stash://auth-callback";
+const PROVIDER_URL = "https://accounts.google.com/o/oauth2/auth?client_id=x";
+
+// What the provider appends to the redirect on the way back.
+const callbackUrl = (fragment: string) => `${REDIRECT_URL}#${fragment}`;
+const TOKENS = "access_token=header.payload.signature&refresh_token=refresh";
+
+const providerReturns = (url: string) => {
+  auth.signInWithOAuth.mockResolvedValue({ data: { url: PROVIDER_URL }, error: null } as never);
+  openAuthSession.mockResolvedValue({ type: "success", url } as never);
+};
 
 const USER = { id: "00000000-0000-0000-0000-000000000000" } as User;
 const SESSION = { access_token: "header.payload.signature", user: USER } as Session;
@@ -172,6 +189,141 @@ describe("# auth", () => {
       const result = await signUpWithEmail("new@example.com", "hunter2hunter2");
 
       expect(result).toMatchObject({ ok: false, error: { code: "unknown" } });
+    });
+  });
+
+  describe("## signInWithProvider", () => {
+    describe("### native", () => {
+      it("returns the session, so the caller never has to re-read it from storage", async () => {
+        providerReturns(callbackUrl(TOKENS));
+        auth.setSession.mockResolvedValue({
+          data: { session: SESSION, user: USER },
+          error: null,
+        } as never);
+
+        const result = await signInWithProvider("google");
+
+        expect(result).toEqual({ ok: true, data: { session: SESSION, user: USER } });
+        expect(auth.setSession).toHaveBeenCalledWith({
+          access_token: "header.payload.signature",
+          refresh_token: "refresh",
+        });
+      });
+
+      it("opens the provider URL against the same redirect it asked Supabase for", async () => {
+        providerReturns(callbackUrl(TOKENS));
+        auth.setSession.mockResolvedValue({
+          data: { session: SESSION, user: USER },
+          error: null,
+        } as never);
+
+        await signInWithProvider("google");
+
+        expect(auth.signInWithOAuth).toHaveBeenCalledWith({
+          provider: "google",
+          options: { redirectTo: REDIRECT_URL, skipBrowserRedirect: true },
+        });
+        expect(openAuthSession).toHaveBeenCalledWith(PROVIDER_URL, REDIRECT_URL);
+      });
+
+      it("maps a dismissed browser to cancelled, so the screen can stay silent", async () => {
+        auth.signInWithOAuth.mockResolvedValue({
+          data: { url: PROVIDER_URL },
+          error: null,
+        } as never);
+        openAuthSession.mockResolvedValue({ type: "dismiss" } as never);
+
+        const result = await signInWithProvider("google");
+
+        expect(result).toMatchObject({ ok: false, error: { code: "cancelled" } });
+        expect(auth.setSession).not.toHaveBeenCalled();
+      });
+
+      // The provider reports a declined consent screen in the URL, not as an
+      // AuthError, so it takes its own mapping to reach the same code.
+      it("treats a declined consent screen as cancelled rather than a failure", async () => {
+        providerReturns(`${REDIRECT_URL}?error=access_denied&error_description=User+said+no`);
+
+        const result = await signInWithProvider("google");
+
+        expect(result).toEqual({
+          ok: false,
+          error: { code: "cancelled", message: "User said no" },
+        });
+      });
+
+      it("reports any other provider error rather than guessing at its meaning", async () => {
+        providerReturns(`${REDIRECT_URL}?error=server_error&error_description=Boom`);
+
+        expect(await signInWithProvider("google")).toEqual({
+          ok: false,
+          error: { code: "unknown", message: "Boom" },
+        });
+      });
+
+      it("refuses a callback carrying no tokens instead of reporting a signed-in success", async () => {
+        providerReturns(callbackUrl("token_type=bearer"));
+
+        expect(await signInWithProvider("google")).toMatchObject({
+          ok: false,
+          error: { code: "unknown" },
+        });
+        expect(auth.setSession).not.toHaveBeenCalled();
+      });
+
+      it("reports an offline attempt as network, matching the email methods", async () => {
+        auth.signInWithOAuth.mockResolvedValue({ data: { url: null }, error: OFFLINE } as never);
+
+        expect(await signInWithProvider("google")).toMatchObject({
+          ok: false,
+          error: { code: "network" },
+        });
+        expect(openAuthSession).not.toHaveBeenCalled();
+      });
+
+      it("surfaces a rejected setSession instead of leaving the caller signed out silently", async () => {
+        providerReturns(callbackUrl(TOKENS));
+        auth.setSession.mockResolvedValue({
+          data: { session: null, user: null },
+          error: apiError("unexpected_failure", "Boom"),
+        } as never);
+
+        expect(await signInWithProvider("google")).toEqual({
+          ok: false,
+          error: { code: "unknown", message: "Boom" },
+        });
+      });
+    });
+
+    describe("### web", () => {
+      beforeEach(() => {
+        jest.replaceProperty(Platform, "OS", "web");
+      });
+
+      // The page navigates away, so no session can come back through the
+      // promise — `detectSessionInUrl` picks it up on the next load instead.
+      it("hands off to the redirect without opening a browser", async () => {
+        auth.signInWithOAuth.mockResolvedValue({ data: { url: null }, error: null } as never);
+
+        expect(await signInWithProvider("google")).toMatchObject({
+          ok: false,
+          error: { code: "redirecting" },
+        });
+        expect(auth.signInWithOAuth).toHaveBeenCalledWith({
+          provider: "google",
+          options: { redirectTo: REDIRECT_URL },
+        });
+        expect(openAuthSession).not.toHaveBeenCalled();
+      });
+
+      it("reports a redirect that never started, rather than claiming to be redirecting", async () => {
+        auth.signInWithOAuth.mockResolvedValue({ data: { url: null }, error: OFFLINE } as never);
+
+        expect(await signInWithProvider("google")).toMatchObject({
+          ok: false,
+          error: { code: "network" },
+        });
+      });
     });
   });
 
