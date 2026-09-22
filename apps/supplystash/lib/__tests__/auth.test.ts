@@ -4,7 +4,13 @@ import { AuthApiError, AuthRetryableFetchError } from "@supabase/supabase-js";
 import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
 
-import { signInWithEmail, signInWithProvider, signOut, signUpWithEmail } from "@/lib/auth";
+import {
+  consumeUserInitiatedSignOut,
+  signInWithEmail,
+  signInWithProvider,
+  signOut,
+  signUpWithEmail,
+} from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
 // `lib/supabase` is mocked rather than the network: these wrappers own the
@@ -48,6 +54,8 @@ const OFFLINE = new AuthRetryableFetchError("Network request failed", 0);
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // The sign-out mark lives at module scope, so drain it between tests.
+  consumeUserInitiatedSignOut();
 });
 
 describe("# auth", () => {
@@ -344,6 +352,40 @@ describe("# auth", () => {
       auth.signOut.mockResolvedValue({ error: apiError("unexpected_failure", "Boom") } as never);
 
       expect(await signOut()).toEqual({ ok: false, error: { code: "unknown", message: "Boom" } });
+    });
+
+    it("marks the sign-out as user-initiated, so the listener does not cry expiry", async () => {
+      auth.signOut.mockResolvedValue({ error: null } as never);
+
+      await signOut();
+
+      expect(consumeUserInitiatedSignOut()).toBe(true);
+    });
+
+    it("leaves no mark when the sign-out fails, so a later expiry is still announced", async () => {
+      auth.signOut.mockResolvedValue({ error: OFFLINE } as never);
+
+      await signOut();
+
+      expect(consumeUserInitiatedSignOut()).toBe(false);
+    });
+
+    it("leaves no mark when the client throws, for the same reason", async () => {
+      auth.signOut.mockRejectedValue(new Error("Boom"));
+
+      await signOut();
+
+      expect(consumeUserInitiatedSignOut()).toBe(false);
+    });
+  });
+
+  describe("## consumeUserInitiatedSignOut", () => {
+    it("reports the mark once, so the next involuntary sign-out is not swallowed", async () => {
+      auth.signOut.mockResolvedValue({ error: null } as never);
+      await signOut();
+
+      expect(consumeUserInitiatedSignOut()).toBe(true);
+      expect(consumeUserInitiatedSignOut()).toBe(false);
     });
   });
 });
