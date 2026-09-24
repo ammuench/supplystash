@@ -1,5 +1,5 @@
 import { revalidateLogic, useForm } from "@tanstack/react-form";
-import { Link } from "expo-router";
+import { Link, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import { type TextInput, View } from "react-native";
 
@@ -18,9 +18,14 @@ import { signInSchema } from "@/lib/schemas/auth";
 // are pending — the logic underneath is the point.
 export default function SignInScreen() {
   const passwordInputRef = useRef<TextInput>(null);
+  // A bounced OAuth callback hands its reason over as a param (see
+  // app/auth-callback.tsx). It is the same kind of form-level failure as a
+  // rejected password, so it seeds the same slot and is cleared by the next
+  // submit.
+  const { authError } = useLocalSearchParams<{ authError?: string }>();
   // Supabase failures are form-level: a rejected credential pair does not belong
   // to either field on its own.
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(authError ?? null);
 
   const form = useForm({
     defaultValues: { email: "", password: "" },

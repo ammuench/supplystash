@@ -18,15 +18,24 @@ import { Text } from "@/components/ui/text";
 // and lib/auth.ts sets the session itself. If a cold start ever routes here, the
 // spinner resolves the same way once the session provider settles.
 export default function AuthCallbackScreen() {
-  const { error } = useLocalSearchParams<{ error?: string }>();
+  const { error, error_description: errorDescription } = useLocalSearchParams<{
+    error?: string;
+    error_description?: string;
+  }>();
 
   // A declined consent screen returns an error instead of tokens, so no
-  // SIGNED_IN is ever coming and the spinner would hang forever.
+  // SIGNED_IN is ever coming and the spinner would hang forever. The provider's
+  // own wording is carried across so the user does not land on a bare form with
+  // no explanation; `error` alone is a code like `access_denied`, so it is only
+  // the fallback.
   useEffect(() => {
     if (error) {
-      router.replace("/sign-in");
+      router.replace({
+        pathname: "/sign-in",
+        params: { authError: errorDescription ?? error },
+      });
     }
-  }, [error]);
+  }, [error, errorDescription]);
 
   return (
     <View className="flex-1 items-center justify-center gap-4">

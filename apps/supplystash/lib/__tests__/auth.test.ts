@@ -304,8 +304,16 @@ describe("# auth", () => {
     });
 
     describe("### web", () => {
+      // `replaceProperty` mutates the real module object, so without an explicit
+      // restore the "web" value leaks into every block declared after this one.
+      let platform: ReturnType<typeof jest.replaceProperty>;
+
       beforeEach(() => {
-        jest.replaceProperty(Platform, "OS", "web");
+        platform = jest.replaceProperty(Platform, "OS", "web");
+      });
+
+      afterEach(() => {
+        platform.restore();
       });
 
       // The page navigates away, so no session can come back through the

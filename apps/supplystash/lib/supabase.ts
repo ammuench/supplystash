@@ -87,6 +87,12 @@ export const authConfig = {
   // out of the URL. React Native has no URL bar to read it from — deep links
   // are handled explicitly by the auth flow instead.
   detectSessionInUrl: isWeb,
+  // Pinned rather than left to the supabase-js default: the native callback
+  // parser in lib/auth.ts reads `access_token`/`refresh_token` out of the
+  // fragment, which is the implicit flow's shape. A future default flip to PKCE
+  // would hand back `?code=` instead and turn every native sign-in into "No
+  // session was returned."
+  flowType: "implicit" as const,
 };
 
 export const supabase = createClient<Database>(env.supabaseUrl, env.supabasePublishableKey, {

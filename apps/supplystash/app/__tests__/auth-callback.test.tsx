@@ -42,6 +42,25 @@ describe("# AuthCallbackScreen", () => {
 
     render(<AuthCallbackScreen />);
 
-    expect(router.replace).toHaveBeenCalledWith("/sign-in");
+    expect(router.replace).toHaveBeenCalledWith({
+      pathname: "/sign-in",
+      params: { authError: "access_denied" },
+    });
+  });
+
+  // The bare code is machine wording; the provider's description is the only
+  // part the user can read, so it must survive the bounce.
+  it("carries the provider's own reason across, not just the error code", () => {
+    mockParams.mockReturnValue({
+      error: "access_denied",
+      error_description: "User said no",
+    });
+
+    render(<AuthCallbackScreen />);
+
+    expect(router.replace).toHaveBeenCalledWith({
+      pathname: "/sign-in",
+      params: { authError: "User said no" },
+    });
   });
 });
