@@ -1,12 +1,22 @@
 import { faker } from "@faker-js/faker";
 import { render, screen, userEvent } from "@testing-library/react-native";
+import { router, useLocalSearchParams } from "expo-router";
 
 import SignInScreen from "@/app/(auth)/sign-in";
 import { signInWithEmail } from "@/lib/auth";
 
 jest.mock("@/lib/auth", () => ({ signInWithEmail: jest.fn() }));
 
+// Spread the real module: the screen renders a `Link`, which needs the actual
+// navigation context. Only the two params entry points are stubbed.
+jest.mock("expo-router", () => ({
+  ...(jest.requireActual("expo-router") as object),
+  router: { setParams: jest.fn() },
+  useLocalSearchParams: jest.fn(() => ({})),
+}));
+
 const mockSignInWithEmail = jest.mocked(signInWithEmail);
+const mockParams = jest.mocked(useLocalSearchParams);
 
 // Success never renders anything here — the session provider redirects — so the
 // happy path asserts on the call, not on the screen.
@@ -28,6 +38,43 @@ const fillAndSubmit = async (email: string, password: string) => {
 describe("# SignInScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockParams.mockReturnValue({});
+  });
+
+  // app/auth-callback.tsx bounces a failed OAuth round trip back here with the
+  // reason as a param.
+  describe("## bounced OAuth error", () => {
+    const AUTH_ERROR = "User said no";
+
+    it("renders a reason that was already present when the screen mounted", () => {
+      mockParams.mockReturnValue({ authError: AUTH_ERROR });
+
+      render(<SignInScreen />);
+
+      expect(screen.getByText(AUTH_ERROR)).toBeOnTheScreen();
+    });
+
+    // The case a `useState` initializer cannot cover: the screen is already
+    // mounted when the bounce lands, so only an effect ever sees the param.
+    it("renders a reason that arrives while the screen is already mounted", () => {
+      const { rerender } = render(<SignInScreen />);
+      expect(screen.queryByText(AUTH_ERROR)).not.toBeOnTheScreen();
+
+      mockParams.mockReturnValue({ authError: AUTH_ERROR });
+      rerender(<SignInScreen />);
+
+      expect(screen.getByText(AUTH_ERROR)).toBeOnTheScreen();
+    });
+
+    // On web the param sits in the address bar, so without this the same stale
+    // error re-displays on every refresh.
+    it("clears the param once the reason has been shown", () => {
+      mockParams.mockReturnValue({ authError: AUTH_ERROR });
+
+      render(<SignInScreen />);
+
+      expect(router.setParams).toHaveBeenCalledWith({ authError: undefined });
+    });
   });
 
   describe("## validation", () => {

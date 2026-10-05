@@ -1,6 +1,6 @@
 import { revalidateLogic, useForm } from "@tanstack/react-form";
-import { Link, useLocalSearchParams } from "expo-router";
-import { useRef, useState } from "react";
+import { Link, router, useLocalSearchParams } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import { type TextInput, View } from "react-native";
 
 import { AppSafeScrollScreen } from "@/components/app-safe-screen";
@@ -20,12 +20,24 @@ export default function SignInScreen() {
   const passwordInputRef = useRef<TextInput>(null);
   // A bounced OAuth callback hands its reason over as a param (see
   // app/auth-callback.tsx). It is the same kind of form-level failure as a
-  // rejected password, so it seeds the same slot and is cleared by the next
+  // rejected password, so it fills the same slot and is cleared by the next
   // submit.
   const { authError } = useLocalSearchParams<{ authError?: string }>();
   // Supabase failures are form-level: a rejected credential pair does not belong
   // to either field on its own.
-  const [formError, setFormError] = useState<string | null>(authError ?? null);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // In an effect rather than as the `useState` seed: the bounce can arrive while
+  // this screen is already mounted, and an initializer only runs once, so the
+  // reason would never be shown. The param is dropped once read — on web it
+  // lives in the address bar, where it would otherwise re-display the same stale
+  // error on every refresh.
+  useEffect(() => {
+    if (authError) {
+      setFormError(authError);
+      router.setParams({ authError: undefined });
+    }
+  }, [authError]);
 
   const form = useForm({
     defaultValues: { email: "", password: "" },

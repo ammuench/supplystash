@@ -7,6 +7,7 @@ import "react-native-get-random-values";
 import "react-native-url-polyfill/auto";
 import type { Database } from "@/lib/database.types";
 
+import { oauthErrorFromUrl } from "@/lib/auth-callback-url";
 import { env } from "@/lib/env";
 
 // As Expo's SecureStore does not support values larger than 2048 bytes, an
@@ -83,17 +84,41 @@ export const authConfig = {
   storage: isWeb ? undefined : new LargeSecureStore(),
   autoRefreshToken: true,
   persistSession: true,
-  // Web signs in through a redirect, so Supabase has to read the OAuth fragment
-  // out of the URL. React Native has no URL bar to read it from — deep links
-  // are handled explicitly by the auth flow instead.
+  // Web signs in through a redirect, so Supabase has to read the PKCE `code`
+  // back out of the URL itself. React Native has no URL bar to read it from —
+  // deep links are handled explicitly by the auth flow instead.
   detectSessionInUrl: isWeb,
-  // Pinned rather than left to the supabase-js default: the native callback
-  // parser in lib/auth.ts reads `access_token`/`refresh_token` out of the
-  // fragment, which is the implicit flow's shape. A future default flip to PKCE
-  // would hand back `?code=` instead and turn every native sign-in into "No
-  // session was returned."
-  flowType: "implicit" as const,
+  // PKCE, and pinned rather than left to the supabase-js default. Under the
+  // implicit flow the access *and* refresh tokens ride back inside the
+  // `supply-stash://` callback URL with nothing binding them to the request, so
+  // any other installed app that claims the same custom scheme could intercept
+  // the redirect and walk away with a replayable refresh token. PKCE sends back
+  // a single-use `?code=` instead, which is worthless without the verifier held
+  // in LargeSecureStore (localStorage on web).
+  //
+  // Pinned because the callback parser in lib/auth.ts reads `code` and calls
+  // `exchangeCodeForSession`: a default flip back to implicit would hand it
+  // fragment tokens and turn every native sign-in into "No session was
+  // returned."
+  flowType: "pkce" as const,
 };
+
+// Read before `createClient`, and deliberately so: `detectSessionInUrl` runs
+// during client initialization and strips the OAuth parameters off the URL, so
+// anything reading `window.location` from inside a component is racing it and
+// usually loses. A declined consent screen is the case that matters — no
+// session is ever coming, so app/auth-callback.tsx needs this to know to bounce
+// instead of spinning forever.
+//
+// Non-null only on the one page load that the provider redirected into; null on
+// native, where the error comes back through `openAuthSessionAsync`. The
+// `location` guard covers the `output: "static"` prerender, which runs this
+// module in Node with no URL of any kind.
+const launchUrl = isWeb ? globalThis.window?.location : undefined;
+
+export const oauthErrorFromLaunchUrl = launchUrl
+  ? oauthErrorFromUrl(`${launchUrl.search}${launchUrl.hash}`)
+  : null;
 
 export const supabase = createClient<Database>(env.supabaseUrl, env.supabasePublishableKey, {
   auth: authConfig,

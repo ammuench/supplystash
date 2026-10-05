@@ -91,6 +91,8 @@ jest.mock("expo-linking", () => ({
 
 jest.mock("expo-web-browser", () => ({
   openAuthSessionAsync: jest.fn(),
+  // Called at module scope by app/auth-callback.tsx.
+  maybeCompleteAuthSession: jest.fn(),
 }));
 
 // `crypto.getRandomValues` comes from react-native-get-random-values, which is a

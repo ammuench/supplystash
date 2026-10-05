@@ -5,6 +5,7 @@ import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
 
+import { oauthUrlFailure, paramsFromCallbackUrl } from "@/lib/auth-callback-url";
 import { supabase } from "@/lib/supabase";
 
 // Provider-agnostic, so OAuth slots in later without a new result type.
@@ -17,9 +18,6 @@ export type AuthErrorCode =
   // The user closed the in-app browser before the provider redirected. Not a
   // failure to report — the screen should fall silent and let them try again.
   | "cancelled"
-  // Web only: the page is navigating to the provider, so this process is about
-  // to be torn down and no result will ever come back through the promise.
-  | "redirecting"
   | "network"
   | "unknown";
 
@@ -124,31 +122,20 @@ export type OAuthProvider = "google" | "apple";
 // architecture doc warns that separating them after the fact is painful.
 export const AUTH_CALLBACK_PATH = "auth-callback";
 
-// Provider errors arrive as URL parameters, not as an AuthError, so there is no
-// instance to hand `toAuthFailure`. `access_denied` is the provider's word for
-// the user declining at the consent screen, which is the same outcome as
-// closing the browser.
-const oauthUrlFailure = (error: string, description: string | null): AuthFailure => ({
-  code: error === "access_denied" ? "cancelled" : "unknown",
-  message: description ?? error,
-});
+// Web only: the page is navigating to the provider, so this process is about to
+// be torn down and no session will ever come back through the promise. A
+// success variant rather than a failure code, so no caller can render "We are
+// redirecting you" as a red form error.
+export type AuthRedirecting = { redirecting: true };
 
-// Supabase appends the tokens as a fragment and its errors as a query string.
-// Split by hand rather than with `new URL`: the native redirect uses a custom
-// scheme, which URL implementations treat as opaque and inconsistently expose a
-// `hash` for. Both halves are still parsed as real parameters.
-const paramsFromCallbackUrl = (url: string) => {
-  const [withoutFragment, fragment = ""] = url.split("#");
-  const query = withoutFragment.split("?")[1] ?? "";
-
-  return new URLSearchParams(`${query}&${fragment}`);
-};
+export const isRedirecting = (data: AuthSuccess | AuthRedirecting): data is AuthRedirecting =>
+  "redirecting" in data;
 
 // No provider is enabled yet (STASH-23 / STASH-24 supply the credentials), so
 // nothing calls this outside tests.
 export const signInWithProvider = async (
   provider: OAuthProvider,
-): Promise<AuthResult<AuthSuccess>> => {
+): Promise<AuthResult<AuthSuccess | AuthRedirecting>> => {
   try {
     const redirectTo = Linking.createURL(AUTH_CALLBACK_PATH);
 
@@ -156,17 +143,15 @@ export const signInWithProvider = async (
     // to the provider, this process ends, and the session is read back out of
     // the URL on the next load by `detectSessionInUrl` (see lib/supabase.ts).
     // So there is nothing to await and no session to return — only the failure
-    // to start the redirect at all is reportable.
+    // to start the redirect at all is reportable. Callers distinguish this from
+    // a real sign-in with `isRedirecting`.
     if (Platform.OS === "web") {
       const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
       if (error) {
         return { ok: false, error: toAuthFailure(error) };
       }
 
-      return {
-        ok: false,
-        error: { code: "redirecting", message: "Redirecting to the provider." },
-      };
+      return { ok: true, data: { redirecting: true } };
     }
 
     // `skipBrowserRedirect` because there is no window to navigate on native —
@@ -200,19 +185,19 @@ export const signInWithProvider = async (
       return { ok: false, error: oauthUrlFailure(providerError, params.get("error_description")) };
     }
 
-    const accessToken = params.get("access_token");
-    const refreshToken = params.get("refresh_token");
-    if (!accessToken || !refreshToken) {
+    const code = params.get("code");
+    if (!code) {
       return { ok: false, error: { code: "unknown", message: "No session was returned." } };
     }
 
-    // Native has no URL bar for GoTrue to read, so the tokens are handed over
-    // explicitly. This is what persists the session through LargeSecureStore and
-    // fires the SIGNED_IN that state/session.tsx is waiting on.
-    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    });
+    // Native has no URL bar for GoTrue to read, so the exchange is driven
+    // explicitly. The PKCE verifier it needs was stashed by `signInWithOAuth`
+    // above and is read back from LargeSecureStore here — which is exactly why
+    // intercepting the callback URL alone buys an attacker nothing. This is what
+    // persists the session and fires the SIGNED_IN that state/session.tsx is
+    // waiting on.
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.exchangeCodeForSession(code);
     if (sessionError) {
       return { ok: false, error: toAuthFailure(sessionError) };
     }

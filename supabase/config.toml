@@ -114,10 +114,17 @@ enabled = true
 #   - The native entry must match `Linking.createURL(AUTH_CALLBACK_PATH)` in lib/auth.ts exactly.
 #   - 8081 is the Metro default for `pnpm web`. These are exact strings with no wildcards, so
 #     another web dev port, a LAN host, or a deployed web origin each need their own line.
+#     `localhost` and `127.0.0.1` are distinct origins to GoTrue, so both are listed.
+#   - TODO (before web ships): add the production web origin. Until it is here, OAuth on the
+#     deployed site fails closed at the provider with a redirect_uri mismatch.
 #   - Under Expo Go / a dev client, `createURL` produces `exp://<host>:8081/--/auth-callback`,
 #     which is host-dependent and so cannot be listed. Native OAuth against this stack needs a
 #     dev build using the custom scheme.
-additional_redirect_urls = ["supply-stash://auth-callback", "http://localhost:8081/auth-callback"]
+additional_redirect_urls = [
+  "supply-stash://auth-callback",
+  "http://localhost:8081/auth-callback",
+  "http://127.0.0.1:8081/auth-callback",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # If disabled, the refresh token will never expire.
