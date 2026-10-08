@@ -48,18 +48,15 @@ const ThemeSwatches = () => (
   <View className="w-full gap-6">
     <View className="gap-2">
       <Text className="font-semibold">Surface stack</Text>
-      <View className="gap-3 rounded-lg border border-border bg-background p-3">
+      <View className="gap-3 rounded-lg border-0 border-border bg-background p-3">
         <Text>background · foreground</Text>
         <Text className="text-muted-foreground">background · muted-foreground</Text>
-        <View className="gap-3 rounded-lg border border-border bg-card p-3">
+        <View className="gap-3 rounded-lg bg-card p-3">
           <Text className="text-card-foreground">card · card-foreground</Text>
           <Text className="text-muted-foreground">card · muted-foreground</Text>
-          <View className="gap-1 rounded-lg border border-border bg-muted p-3">
+          <View className="gap-1 rounded-lg bg-muted p-3">
             <Text>muted · foreground</Text>
             <Text className="text-muted-foreground">muted · muted-foreground</Text>
-            <Text className="text-xs text-muted-foreground">
-              (border on muted: check edge above)
-            </Text>
           </View>
         </View>
       </View>
