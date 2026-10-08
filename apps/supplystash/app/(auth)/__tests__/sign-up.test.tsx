@@ -3,7 +3,11 @@ import { render, screen, userEvent } from "@testing-library/react-native";
 
 import SignUpScreen from "@/app/(auth)/sign-up";
 import { signUpWithEmail } from "@/lib/auth";
-import { PASSWORD_MIN_LENGTH } from "@/lib/schemas/auth";
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_SPECIAL_CHARACTERS,
+  PASSWORD_SYMBOL_MESSAGE,
+} from "@/lib/schemas/auth";
 
 jest.mock("@/lib/auth", () => ({ signUpWithEmail: jest.fn() }));
 
@@ -57,7 +61,7 @@ describe("# SignUpScreen", () => {
       ).toBeOnTheScreen();
       expect(screen.getByText("Password must include an uppercase letter.")).toBeOnTheScreen();
       expect(screen.getByText("Password must include a number.")).toBeOnTheScreen();
-      expect(screen.getByText("Password must include a special character.")).toBeOnTheScreen();
+      expect(screen.getByText(PASSWORD_SYMBOL_MESSAGE)).toBeOnTheScreen();
       expect(mockSignUpWithEmail).not.toHaveBeenCalled();
     });
 
@@ -66,9 +70,11 @@ describe("# SignUpScreen", () => {
 
       expect(
         screen.getByText(
-          `At least ${PASSWORD_MIN_LENGTH} characters, with an uppercase letter, a lowercase letter, a number, and a special character.`,
+          `At least ${PASSWORD_MIN_LENGTH} characters, with an uppercase letter, a lowercase letter, a number, and one of these symbols:`,
         ),
       ).toBeOnTheScreen();
+      // The symbol error says "listed above", so the set itself must be on screen.
+      expect(screen.getByText(PASSWORD_SPECIAL_CHARACTERS)).toBeOnTheScreen();
     });
 
     it("rejects a malformed email before submitting", async () => {
