@@ -5,6 +5,7 @@ import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
 
 import {
+  completeOAuthCallback,
   consumeUserInitiatedSignOut,
   isRedirecting,
   signInWithEmail,
@@ -209,6 +210,65 @@ describe("# auth", () => {
     });
   });
 
+  // The branches are the same ones `signInWithProvider` drives below, since it
+  // delegates here; what this block asserts is that the deep-link entry point
+  // works on its own — app/auth-callback.tsx calls it on a native cold start,
+  // with no `openAuthSessionAsync` round trip in the picture at all.
+  describe("## completeOAuthCallback", () => {
+    it("exchanges a code it was handed directly, with no browser round trip", async () => {
+      exchangeSucceeds();
+
+      const result = await completeOAuthCallback(callbackUrl(`code=${CODE}`));
+
+      expect(result).toEqual({ ok: true, data: { session: SESSION, user: USER } });
+      expect(auth.exchangeCodeForSession).toHaveBeenCalledWith(CODE);
+      expect(openAuthSession).not.toHaveBeenCalled();
+    });
+
+    it("reports a provider error off the URL instead of attempting an exchange", async () => {
+      const result = await completeOAuthCallback(
+        callbackUrl("error=access_denied&error_description=User+said+no"),
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "cancelled", message: "User said no" } });
+      expect(auth.exchangeCodeForSession).not.toHaveBeenCalled();
+    });
+
+    // On Android both `openAuthSessionAsync` and the callback screen's deep link
+    // can deliver the same URL. A second real exchange would fail on the spent
+    // code and report an error over a sign-in that worked.
+    it("shares one exchange between callers handed the same code", async () => {
+      exchangeSucceeds();
+      const url = callbackUrl("code=shared-code");
+
+      const [first, second] = await Promise.all([
+        completeOAuthCallback(url),
+        completeOAuthCallback(url),
+      ]);
+
+      expect(auth.exchangeCodeForSession).toHaveBeenCalledTimes(1);
+      expect(first).toEqual({ ok: true, data: { session: SESSION, user: USER } });
+      expect(second).toEqual(first);
+    });
+
+    it("still exchanges a different code on its own", async () => {
+      exchangeSucceeds();
+
+      await completeOAuthCallback(callbackUrl("code=first-code"));
+      await completeOAuthCallback(callbackUrl("code=second-code"));
+
+      expect(auth.exchangeCodeForSession).toHaveBeenNthCalledWith(1, "first-code");
+      expect(auth.exchangeCodeForSession).toHaveBeenNthCalledWith(2, "second-code");
+    });
+
+    it("refuses a callback carrying no code rather than reporting a signed-in success", async () => {
+      expect(await completeOAuthCallback(REDIRECT_URL)).toEqual({
+        ok: false,
+        error: { code: "unknown", message: "No session was returned." },
+      });
+    });
+  });
+
   describe("## signInWithProvider", () => {
     describe("### native", () => {
       it("returns the session, so the caller never has to re-read it from storage", async () => {
@@ -344,7 +404,7 @@ describe("# auth", () => {
       });
 
       // The page navigates away, so no session can come back through the
-      // promise — `detectSessionInUrl` picks it up on the next load instead.
+      // promise — app/auth-callback.tsx exchanges the code on the next load.
       // Reported as a success, not a `redirecting` failure code: a failure would
       // land in whatever slot the screen renders errors into.
       it("hands off to the redirect without opening a browser", async () => {

@@ -131,17 +131,80 @@ export type AuthRedirecting = { redirecting: true };
 export const isRedirecting = (data: AuthSuccess | AuthRedirecting): data is AuthRedirecting =>
   "redirecting" in data;
 
+// The exchange behind `completeOAuthCallback`, held by code. On Android the
+// redirect can reach both callers — `openAuthSessionAsync` resolves with it
+// *and* Expo Router opens app/auth-callback.tsx on the same deep link — and a
+// code is single-use, so a second exchange would fail and report an error over
+// a sign-in that succeeded. Handing the second caller the first one's promise
+// gives both the same outcome.
+let inflightExchange: { code: string; result: Promise<AuthResult<AuthSuccess>> } | null = null;
+
+const exchangeCode = async (code: string): Promise<AuthResult<AuthSuccess>> => {
+  try {
+    // The PKCE verifier this needs was stashed by `signInWithOAuth` when the
+    // sign-in started — LargeSecureStore on native, localStorage on web — which
+    // is exactly why intercepting the callback URL alone buys an attacker
+    // nothing, and why this still works after a cold start. This is what
+    // persists the session and fires the SIGNED_IN that state/session.tsx is
+    // waiting on.
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      return { ok: false, error: toAuthFailure(error) };
+    }
+    // Not NO_SESSION: that one's wording is sign-up specific.
+    if (!data.session || !data.user) {
+      return { ok: false, error: { code: "unknown", message: "No session was returned." } };
+    }
+
+    return { ok: true, data: { session: data.session, user: data.user } };
+  } catch (thrown) {
+    return { ok: false, error: toThrownFailure(thrown) };
+  }
+};
+
+/**
+ * Turns an OAuth callback URL into a session.
+ *
+ * The one handler for every way that URL can reach us, which is the shape
+ * Supabase's own React Native guide prescribes: the native
+ * `openAuthSessionAsync` round trip below hands it `result.url`, and
+ * app/auth-callback.tsx hands it the web redirect or a native cold-start deep
+ * link. All of them need the identical provider-error, missing-code and
+ * exchange handling, so none of them owns it.
+ */
+export const completeOAuthCallback = async (url: string): Promise<AuthResult<AuthSuccess>> => {
+  const params = paramsFromCallbackUrl(url);
+
+  const providerError = params.get("error");
+  if (providerError) {
+    return { ok: false, error: oauthUrlFailure(providerError, params.get("error_description")) };
+  }
+
+  const code = params.get("code");
+  if (!code) {
+    return { ok: false, error: { code: "unknown", message: "No session was returned." } };
+  }
+
+  if (inflightExchange?.code !== code) {
+    inflightExchange = { code, result: exchangeCode(code) };
+  }
+
+  return await inflightExchange.result;
+};
+
 // No provider is enabled yet (STASH-23 / STASH-24 supply the credentials), so
 // nothing calls this outside tests.
 export const signInWithProvider = async (
   provider: OAuthProvider,
 ): Promise<AuthResult<AuthSuccess | AuthRedirecting>> => {
   try {
+    // A new sign-in brings a new code, so the last one's exchange is done with.
+    inflightExchange = null;
     const redirectTo = Linking.createURL(AUTH_CALLBACK_PATH);
 
     // Web is a redirect, not a round trip: supabase-js navigates the whole page
-    // to the provider, this process ends, and the session is read back out of
-    // the URL on the next load by `detectSessionInUrl` (see lib/supabase.ts).
+    // to the provider, this process ends, and the code is exchanged on the next
+    // load by app/auth-callback.tsx.
     // So there is nothing to await and no session to return — only the failure
     // to start the redirect at all is reportable. Callers distinguish this from
     // a real sign-in with `isRedirecting`.
@@ -178,35 +241,7 @@ export const signInWithProvider = async (
       return { ok: false, error: { code: "unknown", message: "The sign-in browser closed." } };
     }
 
-    const params = paramsFromCallbackUrl(result.url);
-
-    const providerError = params.get("error");
-    if (providerError) {
-      return { ok: false, error: oauthUrlFailure(providerError, params.get("error_description")) };
-    }
-
-    const code = params.get("code");
-    if (!code) {
-      return { ok: false, error: { code: "unknown", message: "No session was returned." } };
-    }
-
-    // Native has no URL bar for GoTrue to read, so the exchange is driven
-    // explicitly. The PKCE verifier it needs was stashed by `signInWithOAuth`
-    // above and is read back from LargeSecureStore here — which is exactly why
-    // intercepting the callback URL alone buys an attacker nothing. This is what
-    // persists the session and fires the SIGNED_IN that state/session.tsx is
-    // waiting on.
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.exchangeCodeForSession(code);
-    if (sessionError) {
-      return { ok: false, error: toAuthFailure(sessionError) };
-    }
-    // Not NO_SESSION: that one's wording is sign-up specific.
-    if (!sessionData.session || !sessionData.user) {
-      return { ok: false, error: { code: "unknown", message: "No session was returned." } };
-    }
-
-    return { ok: true, data: { session: sessionData.session, user: sessionData.user } };
+    return await completeOAuthCallback(result.url);
   } catch (thrown) {
     return { ok: false, error: toThrownFailure(thrown) };
   }

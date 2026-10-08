@@ -1,47 +1,39 @@
-import { render, screen } from "@testing-library/react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { render, screen, waitFor } from "@testing-library/react-native";
+import * as Linking from "expo-linking";
+import { router } from "expo-router";
+import { Platform } from "react-native";
 
-import { useSession } from "@/state/session";
+import AuthCallbackScreen from "@/app/auth-callback";
+import { completeOAuthCallback } from "@/lib/auth";
 
-jest.mock("expo-router", () => ({
-  router: { replace: jest.fn() },
-  useLocalSearchParams: jest.fn(() => ({})),
-}));
+jest.mock("expo-router", () => ({ router: { replace: jest.fn() } }));
 
-jest.mock("@/state/session", () => ({ useSession: jest.fn() }));
+// The deep link that a native cold start arrives on. Null unless a test is
+// standing one up — the web redirect never produces one.
+jest.mock("expo-linking", () => ({ useLinkingURL: jest.fn(() => null) }));
 
-// The fragment snapshot is taken at module scope in lib/supabase.ts, before
-// `detectSessionInUrl` can strip the hash, so the suite controls it from here
-// rather than by writing to a `window.location` the client has already read.
-// `exchangeCodeForSession` is only here to prove the screen never calls it.
-jest.mock("@/lib/supabase", () => ({
-  oauthErrorFromLaunchUrl: null,
-  supabase: { auth: { exchangeCodeForSession: jest.fn() } },
-}));
+jest.mock("@/lib/auth", () => ({ completeOAuthCallback: jest.fn() }));
 
-const mockParams = jest.mocked(useLocalSearchParams);
-const mockSession = jest.mocked(useSession);
+const mockLinkingUrl = jest.mocked(Linking.useLinkingURL);
+const mockComplete = jest.mocked(completeOAuthCallback);
 
-// Required because the mock above is a plain object: assigning to
-// `oauthErrorFromLaunchUrl` needs the module read back, not the binding.
-const launchUrl = jest.requireMock<{ oauthErrorFromLaunchUrl: unknown }>("@/lib/supabase");
-
-// Imported after the mocks: the screen calls `maybeCompleteAuthSession` and
-// reads the launch-URL snapshot at module scope.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const AuthCallbackScreen = require("@/app/auth-callback").default as () => React.ReactElement;
+const NATIVE_URL = "supply-stash://auth-callback?code=abc123";
+const WEB_URL = "http://localhost:8081/auth-callback?code=abc123";
 
 const SESSION = { access_token: "header.payload.signature" };
 
 describe("# AuthCallbackScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockParams.mockReturnValue({});
-    launchUrl.oauthErrorFromLaunchUrl = null;
-    mockSession.mockReturnValue({ session: null, user: null, isLoading: true });
+    mockLinkingUrl.mockReturnValue(NATIVE_URL);
+    mockComplete.mockResolvedValue({ ok: true, data: { session: SESSION, user: null } } as never);
   });
 
-  it("waits while the session provider settles, rather than routing on its own", () => {
+  it("shows a spinner while the exchange is in flight", () => {
+    // Never settles, so the assertion is made with the exchange genuinely
+    // outstanding rather than in the gap before a resolved promise flushes.
+    mockComplete.mockReturnValue(new Promise(() => {}));
+
     render(<AuthCallbackScreen />);
 
     expect(screen.getByText("Finishing sign-in…")).toBeOnTheScreen();
@@ -50,75 +42,105 @@ describe("# AuthCallbackScreen", () => {
 
   // This route sits outside both guarded layouts, so no layout gate will move it
   // along — without this the spinner outlives a perfectly good sign-in.
-  it("leaves for the app once the session arrives", () => {
-    mockSession.mockReturnValue({ session: SESSION, user: null, isLoading: false } as never);
-
+  it("leaves for the app once the exchange succeeds", async () => {
     render(<AuthCallbackScreen />);
 
-    expect(router.replace).toHaveBeenCalledWith("/");
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/"));
   });
 
-  it("stays put while a session is still loading, even if one is already set", () => {
-    mockSession.mockReturnValue({ session: SESSION, user: null, isLoading: true } as never);
+  // A single-use code, so a re-render firing a second exchange would spend a
+  // value GoTrue has already burned and turn a good sign-in into a failure.
+  it("exchanges once, however often it re-renders", async () => {
+    const { rerender } = render(<AuthCallbackScreen />);
+    rerender(<AuthCallbackScreen />);
+    rerender(<AuthCallbackScreen />);
 
-    render(<AuthCallbackScreen />);
-
-    expect(router.replace).not.toHaveBeenCalled();
+    await waitFor(() => expect(router.replace).toHaveBeenCalled());
+    expect(mockComplete).toHaveBeenCalledTimes(1);
   });
 
-  it("bounces a declined sign-in back to the form instead of spinning forever", () => {
-    mockParams.mockReturnValue({ error: "access_denied" });
-
-    render(<AuthCallbackScreen />);
-
-    expect(router.replace).toHaveBeenCalledWith({
-      pathname: "/sign-in",
-      params: { authError: "access_denied" },
-    });
-  });
-
-  // The whole reason the snapshot exists: an implicit-style error arrives in the
-  // fragment, which `useLocalSearchParams` never sees, and the hash is gone by
-  // the time this screen mounts.
-  it("bounces an error that arrived in the fragment, not the query string", () => {
-    launchUrl.oauthErrorFromLaunchUrl = { code: "cancelled", message: "User said no" };
-
-    render(<AuthCallbackScreen />);
-
-    expect(router.replace).toHaveBeenCalledWith({
-      pathname: "/sign-in",
-      params: { authError: "User said no" },
-    });
-  });
-
-  // The bare code is machine wording; the provider's description is the only
-  // part the user can read, so it must survive the bounce.
-  it("carries the provider's own reason across, not just the error code", () => {
-    mockParams.mockReturnValue({
-      error: "access_denied",
-      error_description: "User said no",
+  it("bounces with the reason when the exchange fails", async () => {
+    mockComplete.mockResolvedValue({
+      ok: false,
+      error: { code: "unknown", message: "Code expired." },
     });
 
     render(<AuthCallbackScreen />);
 
-    expect(router.replace).toHaveBeenCalledWith({
-      pathname: "/sign-in",
-      params: { authError: "User said no" },
-    });
+    await waitFor(() =>
+      expect(router.replace).toHaveBeenCalledWith({
+        pathname: "/sign-in",
+        params: { authError: "Code expired." },
+      }),
+    );
   });
 
-  // An error means no session is coming, but a stale one in the provider must
-  // not win the race and strand the user in the app with no explanation.
-  it("prefers the error bounce over a session that is already set", () => {
-    mockParams.mockReturnValue({ error: "access_denied" });
-    mockSession.mockReturnValue({ session: SESSION, user: null, isLoading: false } as never);
+  // Backing out is not a failure to report — the sign-in screen's treatment of
+  // `cancelled` everywhere else is to say nothing at all.
+  it("bounces silently when the user backed out", async () => {
+    mockComplete.mockResolvedValue({
+      ok: false,
+      error: { code: "cancelled", message: "Sign-in was cancelled." },
+    });
 
     render(<AuthCallbackScreen />);
 
-    expect(router.replace).toHaveBeenCalledTimes(1);
-    expect(router.replace).toHaveBeenCalledWith({
-      pathname: "/sign-in",
-      params: { authError: "access_denied" },
+    await waitFor(() =>
+      expect(router.replace).toHaveBeenCalledWith({ pathname: "/sign-in", params: {} }),
+    );
+  });
+
+  describe("## on native", () => {
+    // `openAuthSessionAsync` is gone with the process that opened it, so
+    // nothing exchanges the code unless this screen does.
+    it("exchanges the code off the cold-start deep link", async () => {
+      render(<AuthCallbackScreen />);
+
+      await waitFor(() => expect(mockComplete).toHaveBeenCalledWith(NATIVE_URL));
+    });
+
+    it("does nothing until a deep link arrives", () => {
+      mockLinkingUrl.mockReturnValue(null);
+
+      render(<AuthCallbackScreen />);
+
+      expect(mockComplete).not.toHaveBeenCalled();
+      expect(router.replace).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("## on web", () => {
+    // `replaceProperty` mutates the real module object, so without an explicit
+    // restore the "web" value leaks into every block declared after this one.
+    let platform: ReturnType<typeof jest.replaceProperty>;
+    const originalLocation = Object.getOwnPropertyDescriptor(globalThis.window, "location");
+
+    beforeEach(() => {
+      platform = jest.replaceProperty(Platform, "OS", "web");
+      mockLinkingUrl.mockReturnValue(null);
+      Object.defineProperty(globalThis.window, "location", {
+        configurable: true,
+        value: { href: WEB_URL },
+      });
+    });
+
+    afterEach(() => {
+      platform.restore();
+      if (originalLocation) {
+        Object.defineProperty(globalThis.window, "location", originalLocation);
+      } else {
+        // @ts-expect-error -- removing the stand-in this suite installed
+        delete globalThis.window.location;
+      }
+    });
+
+    // `detectSessionInUrl` is off, so the page's own URL is the only place the
+    // code is ever read from — this screen is the exchange.
+    it("exchanges the code off the page's own URL", async () => {
+      render(<AuthCallbackScreen />);
+
+      await waitFor(() => expect(mockComplete).toHaveBeenCalledWith(WEB_URL));
+      await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/"));
     });
   });
 });

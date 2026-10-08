@@ -107,23 +107,22 @@ describe("# supabase client config", () => {
 
       expect(native.authConfig.storage).toBeInstanceOf(native.LargeSecureStore);
     });
-
-    it("does not look for the OAuth code in a URL, as there is no URL bar", () => {
-      expect(loadFor("ios").authConfig.detectSessionInUrl).toBe(false);
-    });
-
-    it("reports no launch-URL error, as native callbacks never come through one", () => {
-      expect(loadFor("ios").oauthErrorFromLaunchUrl).toBeNull();
-    });
   });
 
   describe("## on web", () => {
     it("passes no storage, leaving supabase-js to pick localStorage", () => {
       expect(loadFor("web").authConfig.storage).toBeUndefined();
     });
+  });
 
-    it("reads the OAuth code back out of the redirect URL", () => {
-      expect(loadFor("web").authConfig.detectSessionInUrl).toBe(true);
+  // Off everywhere, web included: app/auth-callback.tsx exchanges the code
+  // itself so it can report failures. Left on, web would exchange it silently
+  // during `createClient` and the screen's own exchange would race it for a
+  // single-use code.
+  describe("## detectSessionInUrl", () => {
+    it("is off on both platforms", () => {
+      expect(loadFor("ios").authConfig.detectSessionInUrl).toBe(false);
+      expect(loadFor("web").authConfig.detectSessionInUrl).toBe(false);
     });
   });
 
