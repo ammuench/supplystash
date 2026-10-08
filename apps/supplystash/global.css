@@ -13,74 +13,79 @@
   --spacing-hairline: hairlineWidth();
 }
 
+/*
+ * Designer palette (STASH-32), mapped onto the shadcn token names that RN
+ * Reusables components already use. Surfaces stack background -> card -> muted.
+ * Values are Tailwind v4 palette steps inlined as literals: Tailwind only emits
+ * palette vars that are used, so var(--color-zinc-*) can't be relied on here.
+ * Keep the token names in sync with oxfmt-tailwind.css.
+ */
 @layer theme {
   :root {
     @variant light {
-      --color-background: oklch(1 0 0);
-      --color-foreground: oklch(0.145 0 0);
-      --color-card: oklch(1 0 0);
-      --color-card-foreground: oklch(0.145 0 0);
-      --color-popover: oklch(1 0 0);
-      --color-popover-foreground: oklch(0.145 0 0);
-      --color-primary: oklch(0.205 0 0);
-      --color-primary-foreground: oklch(0.985 0 0);
-      --color-secondary: oklch(0.97 0 0);
-      --color-secondary-foreground: oklch(0.205 0 0);
-      --color-muted: oklch(0.97 0 0);
-      --color-muted-foreground: oklch(0.556 0 0);
-      --color-accent: oklch(0.97 0 0);
-      --color-accent-foreground: oklch(0.205 0 0);
-      --color-destructive: oklch(0.577 0.245 27.325);
-      --color-border: oklch(0.922 0 0);
-      --color-input: oklch(0.922 0 0);
-      --color-ring: oklch(0.708 0 0);
-      --color-chart-1: oklch(0.646 0.222 41.116);
-      --color-chart-2: oklch(0.6 0.118 184.704);
-      --color-chart-3: oklch(0.398 0.07 227.392);
-      --color-chart-4: oklch(0.828 0.189 84.429);
-      --color-chart-5: oklch(0.769 0.188 70.08);
-      --color-sidebar: oklch(0.985 0 0);
-      --color-sidebar-foreground: oklch(0.145 0 0);
-      --color-sidebar-primary: oklch(0.205 0 0);
-      --color-sidebar-primary-foreground: oklch(0.985 0 0);
-      --color-sidebar-accent: oklch(0.97 0 0);
-      --color-sidebar-accent-foreground: oklch(0.205 0 0);
-      --color-sidebar-border: oklch(0.922 0 0);
-      --color-sidebar-ring: oklch(0.708 0 0);
+      --color-background: oklch(96.7% 0.001 286.375); /* zinc-100 */
+      --color-foreground: oklch(14.1% 0.005 285.823); /* zinc-950 */
+
+      --color-card: oklch(87.1% 0.006 286.286); /* zinc-300 */
+      --color-card-foreground: oklch(14.1% 0.005 285.823); /* zinc-950 */
+      --color-popover: oklch(87.1% 0.006 286.286); /* zinc-300 */
+      --color-popover-foreground: oklch(14.1% 0.005 285.823); /* zinc-950 */
+      --color-secondary: oklch(87.1% 0.006 286.286); /* zinc-300 */
+      --color-secondary-foreground: oklch(14.1% 0.005 285.823); /* zinc-950 */
+      --color-accent: oklch(87.1% 0.006 286.286); /* zinc-300 */
+      --color-accent-foreground: oklch(14.1% 0.005 285.823); /* zinc-950 */
+
+      --color-muted: oklch(70.5% 0.015 286.067); /* zinc-400 */
+      --color-muted-foreground: oklch(44.2% 0.017 285.786); /* zinc-600 */
+
+      --color-primary: oklch(21% 0.006 285.885); /* zinc-900 */
+      --color-primary-foreground: oklch(98.5% 0 0); /* zinc-50 */
+
+      --color-border: oklch(70.5% 0.015 286.067); /* zinc-400 */
+      --color-input: oklch(70.5% 0.015 286.067); /* zinc-400 */
+      --color-ring: oklch(62.3% 0.214 259.815); /* blue-500 */
+
+      --color-destructive: oklch(63.7% 0.237 25.331); /* red-500 */
+      --color-destructive-foreground: oklch(100% 0 0); /* white */
+      --color-info: oklch(62.3% 0.214 259.815); /* blue-500 */
+      --color-info-foreground: oklch(100% 0 0); /* white */
+      --color-warning: oklch(76.9% 0.188 70.08); /* amber-500 */
+      --color-warning-foreground: oklch(14.1% 0.005 285.823); /* zinc-950 */
+      --color-success: oklch(72.3% 0.219 149.579); /* green-500 */
+      --color-success-foreground: oklch(100% 0 0); /* white */
     }
 
     @variant dark {
-      --color-background: oklch(0.145 0 0);
-      --color-foreground: oklch(0.985 0 0);
-      --color-card: oklch(0.205 0 0);
-      --color-card-foreground: oklch(0.985 0 0);
-      --color-popover: oklch(0.205 0 0);
-      --color-popover-foreground: oklch(0.985 0 0);
-      --color-primary: oklch(0.922 0 0);
-      --color-primary-foreground: oklch(0.205 0 0);
-      --color-secondary: oklch(0.269 0 0);
-      --color-secondary-foreground: oklch(0.985 0 0);
-      --color-muted: oklch(0.269 0 0);
-      --color-muted-foreground: oklch(0.708 0 0);
-      --color-accent: oklch(0.269 0 0);
-      --color-accent-foreground: oklch(0.985 0 0);
-      --color-destructive: oklch(0.704 0.191 22.216);
-      --color-border: oklch(1 0 0 / 10%);
-      --color-input: oklch(1 0 0 / 15%);
-      --color-ring: oklch(0.556 0 0);
-      --color-chart-1: oklch(0.488 0.243 264.376);
-      --color-chart-2: oklch(0.696 0.17 162.48);
-      --color-chart-3: oklch(0.769 0.188 70.08);
-      --color-chart-4: oklch(0.627 0.265 303.9);
-      --color-chart-5: oklch(0.645 0.246 16.439);
-      --color-sidebar: oklch(0.205 0 0);
-      --color-sidebar-foreground: oklch(0.985 0 0);
-      --color-sidebar-primary: oklch(0.488 0.243 264.376);
-      --color-sidebar-primary-foreground: oklch(0.985 0 0);
-      --color-sidebar-accent: oklch(0.269 0 0);
-      --color-sidebar-accent-foreground: oklch(0.985 0 0);
-      --color-sidebar-border: oklch(1 0 0 / 10%);
-      --color-sidebar-ring: oklch(0.556 0 0);
+      --color-background: oklch(14.1% 0.005 285.823); /* zinc-950 */
+      --color-foreground: oklch(98.5% 0 0); /* zinc-50 */
+
+      --color-card: oklch(27.4% 0.006 286.033); /* zinc-800 */
+      --color-card-foreground: oklch(98.5% 0 0); /* zinc-50 */
+      --color-popover: oklch(27.4% 0.006 286.033); /* zinc-800 */
+      --color-popover-foreground: oklch(98.5% 0 0); /* zinc-50 */
+      --color-secondary: oklch(27.4% 0.006 286.033); /* zinc-800 */
+      --color-secondary-foreground: oklch(98.5% 0 0); /* zinc-50 */
+      --color-accent: oklch(27.4% 0.006 286.033); /* zinc-800 */
+      --color-accent-foreground: oklch(98.5% 0 0); /* zinc-50 */
+
+      --color-muted: oklch(21% 0.006 285.885); /* zinc-900 */
+      --color-muted-foreground: oklch(70.5% 0.015 286.067); /* zinc-400 */
+
+      --color-primary: oklch(98.5% 0 0); /* zinc-50 */
+      --color-primary-foreground: oklch(21% 0.006 285.885); /* zinc-900 */
+
+      --color-border: oklch(37% 0.013 285.805); /* zinc-700 */
+      --color-input: oklch(37% 0.013 285.805); /* zinc-700 */
+      --color-ring: oklch(62.3% 0.214 259.815); /* blue-500 */
+
+      --color-destructive: oklch(63.7% 0.237 25.331); /* red-500 */
+      --color-destructive-foreground: oklch(100% 0 0); /* white */
+      --color-info: oklch(62.3% 0.214 259.815); /* blue-500 */
+      --color-info-foreground: oklch(100% 0 0); /* white */
+      --color-warning: oklch(76.9% 0.188 70.08); /* amber-500 */
+      --color-warning-foreground: oklch(14.1% 0.005 285.823); /* zinc-950 */
+      --color-success: oklch(72.3% 0.219 149.579); /* green-500 */
+      --color-success-foreground: oklch(100% 0 0); /* white */
     }
   }
 }

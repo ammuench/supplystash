@@ -14,7 +14,7 @@ import { useUniwind, withUniwind } from "uniwind";
 
 import { posthog } from "@/lib/analytics";
 import { queryClient } from "@/lib/query-client";
-import { NAV_THEME } from "@/lib/theme";
+import { useNavTheme } from "@/lib/theme";
 import { SessionProvider } from "@/state/session";
 
 export {
@@ -35,12 +35,13 @@ const AnalyticsProvider = ({ children }: { children: React.ReactNode }) =>
 
 export default function RootLayout() {
   const { theme } = useUniwind();
+  const navTheme = useNavTheme();
 
   return (
     <StyledGestureHandlerRootView className="flex-1">
       <SafeAreaProvider>
         <KeyboardProvider>
-          <ThemeProvider value={NAV_THEME[theme ?? "light"]}>
+          <ThemeProvider value={navTheme}>
             <QueryClientProvider client={queryClient}>
               {/* Inside QueryClientProvider: sign-out has to tear down the query
                   cache (STASH-21), so the client must already exist above it. */}

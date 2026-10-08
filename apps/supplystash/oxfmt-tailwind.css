@@ -41,20 +41,14 @@
   --color-accent: #000;
   --color-accent-foreground: #000;
   --color-destructive: #000;
+  --color-destructive-foreground: #000;
+  --color-info: #000;
+  --color-info-foreground: #000;
+  --color-warning: #000;
+  --color-warning-foreground: #000;
+  --color-success: #000;
+  --color-success-foreground: #000;
   --color-border: #000;
   --color-input: #000;
   --color-ring: #000;
-  --color-chart-1: #000;
-  --color-chart-2: #000;
-  --color-chart-3: #000;
-  --color-chart-4: #000;
-  --color-chart-5: #000;
-  --color-sidebar: #000;
-  --color-sidebar-foreground: #000;
-  --color-sidebar-primary: #000;
-  --color-sidebar-primary-foreground: #000;
-  --color-sidebar-accent: #000;
-  --color-sidebar-accent-foreground: #000;
-  --color-sidebar-border: #000;
-  --color-sidebar-ring: #000;
 }
