@@ -11,7 +11,9 @@ pre-commit:
       glob: "*.{js,ts,vue,jsx,tsx}"
       stage_fixed: true
     - name: oxfmt
-      run: ./node_modules/.bin/oxfmt {staged_files}
+      # Without the flag, a commit whose only staged file is in oxfmt's
+      # ignorePatterns (e.g. uniwind-types.d.ts) exits 2 and blocks the commit.
+      run: ./node_modules/.bin/oxfmt --no-error-on-unmatched-pattern {staged_files}
       glob: "*.{js,ts,vue,jsx,tsx,json,md,css,yml,yaml}"
       stage_fixed: true
     - name: squawk
