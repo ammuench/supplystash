@@ -33,6 +33,9 @@ const auth = supabase.auth as jest.Mocked<typeof supabase.auth>;
 const openAuthSession = jest.mocked(WebBrowser.openAuthSessionAsync);
 
 const REDIRECT_URL = "supply-stash://auth-callback";
+// What `createURL` yields on web: the page's own origin, matching the localhost
+// entry in `additional_redirect_urls` (supabase/config.toml).
+const WEB_REDIRECT_URL = "http://localhost:8081/auth-callback";
 const PROVIDER_URL = "https://accounts.google.com/o/oauth2/auth?client_id=x";
 
 // What the provider appends to the redirect on the way back. Under PKCE that is
@@ -416,7 +419,7 @@ describe("# auth", () => {
         expect(result.ok && isRedirecting(result.data)).toBe(true);
         expect(auth.signInWithOAuth).toHaveBeenCalledWith({
           provider: "google",
-          options: { redirectTo: REDIRECT_URL },
+          options: { redirectTo: WEB_REDIRECT_URL },
         });
         expect(openAuthSession).not.toHaveBeenCalled();
       });
