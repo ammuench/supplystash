@@ -80,6 +80,27 @@ jest.mock("expo-secure-store", () => {
   };
 });
 
+// Both of these are native modules with no jest implementation, and lib/auth.ts
+// imports them at module scope for the OAuth flow. The real `createURL` returns
+// an `http://` origin on web and the custom scheme on native, and the mock
+// mirrors both so a suite can assert the redirect each platform actually sends.
+// `Platform` is read per call, not captured, so a test's
+// `jest.replaceProperty(Platform, "OS", "web")` takes effect.
+jest.mock("expo-linking", () => ({
+  createURL: jest.fn((path: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Platform } = require("react-native") as typeof import("react-native");
+
+    return Platform.OS === "web" ? `http://localhost:8081/${path}` : `supply-stash://${path}`;
+  }),
+}));
+
+jest.mock("expo-web-browser", () => ({
+  openAuthSessionAsync: jest.fn(),
+  // Called at module scope by app/auth-callback.tsx.
+  maybeCompleteAuthSession: jest.fn(),
+}));
+
 // `crypto.getRandomValues` comes from react-native-get-random-values, which is a
 // native module with no jest implementation. Node's own webcrypto satisfies the
 // same contract, so LargeSecureStore generates real AES keys in tests.

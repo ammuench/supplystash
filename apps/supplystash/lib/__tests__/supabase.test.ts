@@ -107,19 +107,33 @@ describe("# supabase client config", () => {
 
       expect(native.authConfig.storage).toBeInstanceOf(native.LargeSecureStore);
     });
-
-    it("does not look for an OAuth fragment, as there is no URL bar", () => {
-      expect(loadFor("ios").authConfig.detectSessionInUrl).toBe(false);
-    });
   });
 
   describe("## on web", () => {
     it("passes no storage, leaving supabase-js to pick localStorage", () => {
       expect(loadFor("web").authConfig.storage).toBeUndefined();
     });
+  });
 
-    it("reads the OAuth fragment out of the redirect URL", () => {
-      expect(loadFor("web").authConfig.detectSessionInUrl).toBe(true);
+  // Off everywhere, web included: app/auth-callback.tsx exchanges the code
+  // itself so it can report failures. Left on, web would exchange it silently
+  // during `createClient` and the screen's own exchange would race it for a
+  // single-use code.
+  describe("## detectSessionInUrl", () => {
+    it("is off on both platforms", () => {
+      expect(loadFor("ios").authConfig.detectSessionInUrl).toBe(false);
+      expect(loadFor("web").authConfig.detectSessionInUrl).toBe(false);
+    });
+  });
+
+  // Pinned, not inherited: implicit would put the access and refresh tokens in
+  // the `supply-stash://` callback URL, where another app claiming the scheme
+  // could intercept them, and would hand the parser in lib/auth.ts a shape it
+  // no longer reads.
+  describe("## flow type", () => {
+    it("pins PKCE on both platforms", () => {
+      expect(loadFor("ios").authConfig.flowType).toBe("pkce");
+      expect(loadFor("web").authConfig.flowType).toBe("pkce");
     });
   });
 });

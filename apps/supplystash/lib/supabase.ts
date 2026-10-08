@@ -83,10 +83,24 @@ export const authConfig = {
   storage: isWeb ? undefined : new LargeSecureStore(),
   autoRefreshToken: true,
   persistSession: true,
-  // Web signs in through a redirect, so Supabase has to read the OAuth fragment
-  // out of the URL. React Native has no URL bar to read it from — deep links
-  // are handled explicitly by the auth flow instead.
-  detectSessionInUrl: isWeb,
+  // Off on both platforms: app/auth-callback.tsx exchanges the PKCE `code`
+  // itself. Left on, web would exchange it silently inside `createClient`,
+  // which reports its errors to no one — the callback screen would be left
+  // inferring failure from the absence of a session.
+  detectSessionInUrl: false,
+  // PKCE, and pinned rather than left to the supabase-js default. Under the
+  // implicit flow the access *and* refresh tokens ride back inside the
+  // `supply-stash://` callback URL with nothing binding them to the request, so
+  // any other installed app that claims the same custom scheme could intercept
+  // the redirect and walk away with a replayable refresh token. PKCE sends back
+  // a single-use `?code=` instead, which is worthless without the verifier held
+  // in LargeSecureStore (localStorage on web).
+  //
+  // Pinned because the callback parser in lib/auth.ts reads `code` and calls
+  // `exchangeCodeForSession`: a default flip back to implicit would hand it
+  // fragment tokens and turn every native sign-in into "No session was
+  // returned."
+  flowType: "pkce" as const,
 };
 
 export const supabase = createClient<Database>(env.supabaseUrl, env.supabasePublishableKey, {

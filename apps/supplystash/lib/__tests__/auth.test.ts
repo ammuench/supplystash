@@ -1,8 +1,18 @@
 import type { Session, User } from "@supabase/supabase-js";
 
 import { AuthApiError, AuthRetryableFetchError } from "@supabase/supabase-js";
+import * as WebBrowser from "expo-web-browser";
+import { Platform } from "react-native";
 
-import { consumeUserInitiatedSignOut, signInWithEmail, signOut, signUpWithEmail } from "@/lib/auth";
+import {
+  completeOAuthCallback,
+  consumeUserInitiatedSignOut,
+  isRedirecting,
+  signInWithEmail,
+  signInWithProvider,
+  signOut,
+  signUpWithEmail,
+} from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
 // `lib/supabase` is mocked rather than the network: these wrappers own the
@@ -12,12 +22,38 @@ jest.mock("@/lib/supabase", () => ({
     auth: {
       signUp: jest.fn(),
       signInWithPassword: jest.fn(),
+      signInWithOAuth: jest.fn(),
+      exchangeCodeForSession: jest.fn(),
       signOut: jest.fn(),
     },
   },
 }));
 
 const auth = supabase.auth as jest.Mocked<typeof supabase.auth>;
+const openAuthSession = jest.mocked(WebBrowser.openAuthSessionAsync);
+
+const REDIRECT_URL = "supply-stash://auth-callback";
+// What `createURL` yields on web: the page's own origin, matching the localhost
+// entry in `additional_redirect_urls` (supabase/config.toml).
+const WEB_REDIRECT_URL = "http://localhost:8081/auth-callback";
+const PROVIDER_URL = "https://accounts.google.com/o/oauth2/auth?client_id=x";
+
+// What the provider appends to the redirect on the way back. Under PKCE that is
+// a single-use code in the query string, not tokens in the fragment.
+const callbackUrl = (query: string) => `${REDIRECT_URL}?${query}`;
+const CODE = "pkce-authorization-code";
+
+const exchangeSucceeds = () => {
+  auth.exchangeCodeForSession.mockResolvedValue({
+    data: { session: SESSION, user: USER },
+    error: null,
+  } as never);
+};
+
+const providerReturns = (url: string) => {
+  auth.signInWithOAuth.mockResolvedValue({ data: { url: PROVIDER_URL }, error: null } as never);
+  openAuthSession.mockResolvedValue({ type: "success", url } as never);
+};
 
 const USER = { id: "00000000-0000-0000-0000-000000000000" } as User;
 const SESSION = { access_token: "header.payload.signature", user: USER } as Session;
@@ -174,6 +210,228 @@ describe("# auth", () => {
       const result = await signUpWithEmail("new@example.com", "hunter2hunter2");
 
       expect(result).toMatchObject({ ok: false, error: { code: "unknown" } });
+    });
+  });
+
+  // The branches are the same ones `signInWithProvider` drives below, since it
+  // delegates here; what this block asserts is that the deep-link entry point
+  // works on its own — app/auth-callback.tsx calls it on a native cold start,
+  // with no `openAuthSessionAsync` round trip in the picture at all.
+  describe("## completeOAuthCallback", () => {
+    it("exchanges a code it was handed directly, with no browser round trip", async () => {
+      exchangeSucceeds();
+
+      const result = await completeOAuthCallback(callbackUrl(`code=${CODE}`));
+
+      expect(result).toEqual({ ok: true, data: { session: SESSION, user: USER } });
+      expect(auth.exchangeCodeForSession).toHaveBeenCalledWith(CODE);
+      expect(openAuthSession).not.toHaveBeenCalled();
+    });
+
+    it("reports a provider error off the URL instead of attempting an exchange", async () => {
+      const result = await completeOAuthCallback(
+        callbackUrl("error=access_denied&error_description=User+said+no"),
+      );
+
+      expect(result).toEqual({ ok: false, error: { code: "cancelled", message: "User said no" } });
+      expect(auth.exchangeCodeForSession).not.toHaveBeenCalled();
+    });
+
+    // On Android both `openAuthSessionAsync` and the callback screen's deep link
+    // can deliver the same URL. A second real exchange would fail on the spent
+    // code and report an error over a sign-in that worked.
+    it("shares one exchange between callers handed the same code", async () => {
+      exchangeSucceeds();
+      const url = callbackUrl("code=shared-code");
+
+      const [first, second] = await Promise.all([
+        completeOAuthCallback(url),
+        completeOAuthCallback(url),
+      ]);
+
+      expect(auth.exchangeCodeForSession).toHaveBeenCalledTimes(1);
+      expect(first).toEqual({ ok: true, data: { session: SESSION, user: USER } });
+      expect(second).toEqual(first);
+    });
+
+    it("still exchanges a different code on its own", async () => {
+      exchangeSucceeds();
+
+      await completeOAuthCallback(callbackUrl("code=first-code"));
+      await completeOAuthCallback(callbackUrl("code=second-code"));
+
+      expect(auth.exchangeCodeForSession).toHaveBeenNthCalledWith(1, "first-code");
+      expect(auth.exchangeCodeForSession).toHaveBeenNthCalledWith(2, "second-code");
+    });
+
+    it("refuses a callback carrying no code rather than reporting a signed-in success", async () => {
+      expect(await completeOAuthCallback(REDIRECT_URL)).toEqual({
+        ok: false,
+        error: { code: "unknown", message: "No session was returned." },
+      });
+    });
+  });
+
+  describe("## signInWithProvider", () => {
+    describe("### native", () => {
+      it("returns the session, so the caller never has to re-read it from storage", async () => {
+        providerReturns(callbackUrl(`code=${CODE}`));
+        exchangeSucceeds();
+
+        const result = await signInWithProvider("google");
+
+        expect(result).toEqual({ ok: true, data: { session: SESSION, user: USER } });
+        // The code alone: the PKCE verifier is held in storage by supabase-js,
+        // which is what makes an intercepted callback URL useless on its own.
+        expect(auth.exchangeCodeForSession).toHaveBeenCalledWith(CODE);
+      });
+
+      it("opens the provider URL against the same redirect it asked Supabase for", async () => {
+        providerReturns(callbackUrl(`code=${CODE}`));
+        exchangeSucceeds();
+
+        await signInWithProvider("google");
+
+        expect(auth.signInWithOAuth).toHaveBeenCalledWith({
+          provider: "google",
+          options: { redirectTo: REDIRECT_URL, skipBrowserRedirect: true },
+        });
+        expect(openAuthSession).toHaveBeenCalledWith(PROVIDER_URL, REDIRECT_URL);
+      });
+
+      it("maps a dismissed browser to cancelled, so the screen can stay silent", async () => {
+        auth.signInWithOAuth.mockResolvedValue({
+          data: { url: PROVIDER_URL },
+          error: null,
+        } as never);
+        openAuthSession.mockResolvedValue({ type: "dismiss" } as never);
+
+        const result = await signInWithProvider("google");
+
+        expect(result).toMatchObject({ ok: false, error: { code: "cancelled" } });
+        expect(auth.exchangeCodeForSession).not.toHaveBeenCalled();
+      });
+
+      // The provider reports a declined consent screen in the URL, not as an
+      // AuthError, so it takes its own mapping to reach the same code.
+      it("treats a declined consent screen as cancelled rather than a failure", async () => {
+        providerReturns(callbackUrl("error=access_denied&error_description=User+said+no"));
+
+        const result = await signInWithProvider("google");
+
+        expect(result).toEqual({
+          ok: false,
+          error: { code: "cancelled", message: "User said no" },
+        });
+      });
+
+      it("reports any other provider error rather than guessing at its meaning", async () => {
+        providerReturns(callbackUrl("error=server_error&error_description=Boom"));
+
+        expect(await signInWithProvider("google")).toEqual({
+          ok: false,
+          error: { code: "unknown", message: "Boom" },
+        });
+      });
+
+      // Reads an error out of the fragment too: which half a provider uses is
+      // not something the parser gets to assume.
+      it("reads a provider error out of the fragment as well as the query", async () => {
+        providerReturns(`${REDIRECT_URL}#error=access_denied&error_description=User+said+no`);
+
+        expect(await signInWithProvider("google")).toEqual({
+          ok: false,
+          error: { code: "cancelled", message: "User said no" },
+        });
+      });
+
+      it("refuses a callback carrying no code instead of reporting a signed-in success", async () => {
+        providerReturns(callbackUrl("token_type=bearer"));
+
+        expect(await signInWithProvider("google")).toMatchObject({
+          ok: false,
+          error: { code: "unknown" },
+        });
+        expect(auth.exchangeCodeForSession).not.toHaveBeenCalled();
+      });
+
+      // The implicit flow's shape. Pinning `flowType` is what stops this from
+      // happening, and this is the test that would catch a regression there.
+      it("refuses fragment tokens, which are no longer the flow's shape", async () => {
+        providerReturns(
+          `${REDIRECT_URL}#access_token=header.payload.signature&refresh_token=refresh`,
+        );
+
+        expect(await signInWithProvider("google")).toMatchObject({
+          ok: false,
+          error: { code: "unknown" },
+        });
+        expect(auth.exchangeCodeForSession).not.toHaveBeenCalled();
+      });
+
+      it("reports an offline attempt as network, matching the email methods", async () => {
+        auth.signInWithOAuth.mockResolvedValue({ data: { url: null }, error: OFFLINE } as never);
+
+        expect(await signInWithProvider("google")).toMatchObject({
+          ok: false,
+          error: { code: "network" },
+        });
+        expect(openAuthSession).not.toHaveBeenCalled();
+      });
+
+      it("surfaces a rejected exchange instead of leaving the caller signed out silently", async () => {
+        providerReturns(callbackUrl(`code=${CODE}`));
+        auth.exchangeCodeForSession.mockResolvedValue({
+          data: { session: null, user: null },
+          error: apiError("unexpected_failure", "Boom"),
+        } as never);
+
+        expect(await signInWithProvider("google")).toEqual({
+          ok: false,
+          error: { code: "unknown", message: "Boom" },
+        });
+      });
+    });
+
+    describe("### web", () => {
+      // `replaceProperty` mutates the real module object, so without an explicit
+      // restore the "web" value leaks into every block declared after this one.
+      let platform: ReturnType<typeof jest.replaceProperty>;
+
+      beforeEach(() => {
+        platform = jest.replaceProperty(Platform, "OS", "web");
+      });
+
+      afterEach(() => {
+        platform.restore();
+      });
+
+      // The page navigates away, so no session can come back through the
+      // promise — app/auth-callback.tsx exchanges the code on the next load.
+      // Reported as a success, not a `redirecting` failure code: a failure would
+      // land in whatever slot the screen renders errors into.
+      it("hands off to the redirect without opening a browser", async () => {
+        auth.signInWithOAuth.mockResolvedValue({ data: { url: null }, error: null } as never);
+
+        const result = await signInWithProvider("google");
+
+        expect(result).toEqual({ ok: true, data: { redirecting: true } });
+        expect(result.ok && isRedirecting(result.data)).toBe(true);
+        expect(auth.signInWithOAuth).toHaveBeenCalledWith({
+          provider: "google",
+          options: { redirectTo: WEB_REDIRECT_URL },
+        });
+        expect(openAuthSession).not.toHaveBeenCalled();
+      });
+
+      it("reports a redirect that never started, rather than claiming to be redirecting", async () => {
+        auth.signInWithOAuth.mockResolvedValue({ data: { url: null }, error: OFFLINE } as never);
+
+        expect(await signInWithProvider("google")).toMatchObject({
+          ok: false,
+          error: { code: "network" },
+        });
+      });
     });
   });
 
