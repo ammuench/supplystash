@@ -108,3 +108,12 @@ if (typeof globalThis.crypto === "undefined") {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   globalThis.crypto = require("node:crypto").webcrypto;
 }
+
+// Uniwind has no compiled stylesheet under jest, so `useCSSVariable` can't find
+// any token and logs a warning on every render of a component that reads one
+// (components/ui/input.tsx). Returning undefined is what it yields at runtime
+// for a missing token, so callers exercise their real fallback path.
+jest.mock("uniwind", () => ({
+  ...jest.requireActual("uniwind"),
+  useCSSVariable: jest.fn(),
+}));
