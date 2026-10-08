@@ -11,11 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Text } from "@/components/ui/text";
 import { signUpWithEmail } from "@/lib/auth";
-import { PASSWORD_MIN_LENGTH, signUpSchema } from "@/lib/schemas/auth";
+import { PASSWORD_MIN_LENGTH, PASSWORD_SPECIAL_CHARACTERS, signUpSchema } from "@/lib/schemas/auth";
 
 // Five rules is too many to discover one rejection at a time, so the policy is
 // stated up front rather than only after a failed attempt.
-const PASSWORD_HINT = `At least ${PASSWORD_MIN_LENGTH} characters, with an uppercase letter, a lowercase letter, a number, and a special character.`;
+const PASSWORD_HINT = `At least ${PASSWORD_MIN_LENGTH} characters, with an uppercase letter, a lowercase letter, a number, and one of these symbols:`;
 
 // Draft UI: the react-native-reusables sign-up block, minus its social buttons
 // (no OAuth exists yet). Real designs are pending — the logic underneath is the
@@ -102,6 +102,10 @@ export default function SignUpScreen() {
                     returnKeyType="send"
                   />
                   <Text className="text-sm text-muted-foreground">{PASSWORD_HINT}</Text>
+                  {/* Monospaced so look-alikes (`'` and `` ` ``, `|` and `/`) stay distinguishable. */}
+                  <Text variant="code" className="self-start text-muted-foreground">
+                    {PASSWORD_SPECIAL_CHARACTERS}
+                  </Text>
                   <FormFieldErrors errors={field.state.meta.errors} />
                 </View>
               )}

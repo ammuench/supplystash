@@ -4,10 +4,17 @@ import { z } from "zod";
 // real gate; validating here first means the user sees the rule before a round trip.
 export const PASSWORD_MIN_LENGTH = 12;
 
-// `[auth] password_requirements` only offers preset character classes, and its
-// `lower_upper_letters_digits_symbols` setting has no configurable symbol list — so
-// the exact allowed set lives here and is a client-side rule on top of the server's.
-export const PASSWORD_SPECIAL_CHARACTERS = "!@#$%^&*()-_+=[]{}:;'\"<>,.?`|\\/";
+// Mirrors the symbol group the Supabase CLI sends GoTrue for `[auth]
+// password_requirements = "lower_upper_letters_digits_symbols"`. That preset has no
+// configurable list and is ASCII-only, so a broader client rule would accept "€"
+// only for the server to reject it. Keep the two sets identical.
+export const PASSWORD_SPECIAL_CHARACTERS = "!@#$%^&*()-_+=[]{}:;'\"<>,.?`|\\/~";
+
+// Points at the set rather than repeating it: sign-up renders the set beneath its
+// password hint, always visible. "A special character" alone told a user whose only
+// symbol is "€" to add something they could see they already had.
+export const PASSWORD_SYMBOL_MESSAGE =
+  "Password must include one of the special symbols listed above.";
 
 // `[]`, `^`, `-` and `\` all mean something inside a character class, so every
 // character is escaped rather than trusting the set to stay free of them.
@@ -28,10 +35,7 @@ const signUpPasswordSchema = z
   .regex(/[A-Z]/, "Password must include an uppercase letter.")
   .regex(/[a-z]/, "Password must include a lowercase letter.")
   .regex(/\d/, "Password must include a number.")
-  // TODO(STASH-20): the message says "special character" but the set is fixed, so a
-  // password containing only "€" is told to add what it already has. Name the allowed
-  // set in the message once the auth flows are settled.
-  .regex(SPECIAL_CHARACTER_PATTERN, "Password must include a special character.");
+  .regex(SPECIAL_CHARACTER_PATTERN, PASSWORD_SYMBOL_MESSAGE);
 
 // Sign-in deliberately checks only for presence. Applying the sign-up policy here
 // would lock out any account created before the policy — the server decides whether

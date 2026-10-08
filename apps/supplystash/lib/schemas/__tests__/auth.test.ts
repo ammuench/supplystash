@@ -1,6 +1,7 @@
 import {
   PASSWORD_MIN_LENGTH,
   PASSWORD_SPECIAL_CHARACTERS,
+  PASSWORD_SYMBOL_MESSAGE,
   signInSchema,
   signUpSchema,
 } from "@/lib/schemas/auth";
@@ -49,9 +50,7 @@ describe("# auth schemas", () => {
     });
 
     it("requires a special character", () => {
-      expect(passwordErrors("Correct1Horsey")).toContain(
-        "Password must include a special character.",
-      );
+      expect(passwordErrors("Correct1Horsey")).toContain(PASSWORD_SYMBOL_MESSAGE);
     });
 
     // Rules are reported together: a user fixing one thing at a time because the
@@ -61,7 +60,7 @@ describe("# auth schemas", () => {
         `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`,
         "Password must include an uppercase letter.",
         "Password must include a number.",
-        "Password must include a special character.",
+        PASSWORD_SYMBOL_MESSAGE,
       ]);
     });
 
@@ -75,10 +74,13 @@ describe("# auth schemas", () => {
       },
     );
 
-    it("rejects a character outside the allowed special set", () => {
-      expect(passwordErrors("Correct1Horsey€")).toContain(
-        "Password must include a special character.",
-      );
+    // "€" is visibly a symbol but not one GoTrue counts, so it fails only the symbol
+    // rule — and the message must point at the allowed set, not ask for "a special
+    // character" the user can see they already typed.
+    it("rejects a symbol outside the allowed set with a message pointing at the set", () => {
+      expect(passwordErrors("Correct1Horsey€")).toEqual([
+        "Password must include one of the special symbols listed above.",
+      ]);
     });
 
     it("rejects a malformed email", () => {
