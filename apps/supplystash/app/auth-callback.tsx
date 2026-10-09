@@ -14,9 +14,9 @@ import { completeOAuthCallback } from "@/lib/auth";
 WebBrowser.maybeCompleteAuthSession();
 
 // Where the OAuth redirect lands. Deliberately outside both `(auth)` and
-// `(app)`: it has to be reachable with no session, and the gate in either group
-// would bounce it before the exchange could land. Which is also why it
-// navigates for itself — no layout gate will move it along.
+// `(app)`, and unguarded in RootNavigator: it has to be reachable with no
+// session, and either group's guard would bounce it before the exchange could
+// land. Which is also why it navigates for itself — no guard will move it along.
 //
 // On web this is every sign-in: the page comes back from the provider with the
 // PKCE `code` in its URL, and `detectSessionInUrl` is off (see lib/supabase.ts)
@@ -46,7 +46,7 @@ export default function AuthCallbackScreen() {
 
     void completeOAuthCallback(url).then((result) => {
       // The SIGNED_IN the exchange fired has already reached
-      // state/session.tsx, so `(app)`'s gate lets this through.
+      // state/session.tsx, so the `(app)` guard lets this through.
       if (result.ok) {
         router.replace("/");
 

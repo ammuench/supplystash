@@ -14,8 +14,8 @@ export const SESSION_EXPIRED_MESSAGE = "Your session expired — please sign in 
 type SessionContextValue = {
   session: Session | null;
   user: User | null;
-  // True until the persisted session has been read off disk. The splash hold
-  // (STASH-19) consumes this; nothing gates on it yet.
+  // True until the persisted session has been read off disk. RootNavigator
+  // renders null and SplashScreenController holds the splash until it flips.
   isLoading: boolean;
 };
 

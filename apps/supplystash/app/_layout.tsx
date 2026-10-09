@@ -3,15 +3,17 @@ import { Toasts } from "@backpackapp-io/react-native-toast";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { PostHogProvider } from "posthog-react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
 import { useUniwind, withUniwind } from "uniwind";
 
+import { RootNavigator } from "@/components/root-navigator";
+import { SplashScreenController } from "@/components/splash-screen-controller";
 import { posthog } from "@/lib/analytics";
 import { queryClient } from "@/lib/query-client";
 import { useNavTheme } from "@/lib/theme";
@@ -21,6 +23,10 @@ export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary,
 } from "expo-router";
+
+// Otherwise expo-router hides the splash on first render, before the saved theme
+// and session are loaded. SplashScreenController decides when it hides.
+void SplashScreen.preventAutoHideAsync();
 
 // `react-native-gesture-handler` is third-party, so it needs `withUniwind` to accept
 // `className`. It has to be the outermost view and has to fill the screen — gorhom's
@@ -39,17 +45,23 @@ export default function RootLayout() {
 
   return (
     <StyledGestureHandlerRootView className="flex-1">
-      <SafeAreaProvider>
+      {/* Without initialMetrics the provider renders nothing until native
+          reports the insets, which shows as a blank frame after the splash.
+          The launch-time insets are known synchronously, so pass them in. */}
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <KeyboardProvider>
           <ThemeProvider value={navTheme}>
             <QueryClientProvider client={queryClient}>
               {/* Inside QueryClientProvider: sign-out has to tear down the query
                   cache (STASH-21), so the client must already exist above it. */}
               <SessionProvider>
+                {/* Inside SessionProvider: it holds the splash until the session
+                    and the saved theme are both loaded. */}
+                <SplashScreenController />
                 <AnalyticsProvider>
                   <BottomSheetModalProvider>
                     <StatusBar style={theme === "dark" ? "light" : "dark"} />
-                    <Stack />
+                    <RootNavigator />
                     <PortalHost />
                     {/* Toasts sit last so they render above the stack and the
                         portal host, and inside SafeAreaProvider so they respect

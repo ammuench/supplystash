@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 
 import { AppSafeScreen } from "@/components/app-safe-screen";
+import { ThemePicker } from "@/components/theme-picker";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { signOut } from "@/lib/auth";
@@ -35,6 +36,7 @@ export default function SettingsScreen() {
   return (
     <AppSafeScreen className="items-center justify-center gap-4 p-4">
       <Text className="text-xl font-semibold">Settings</Text>
+      <ThemePicker />
       <Button disabled={isSigningOut} onPress={() => void handleSignOut()}>
         <Text>{isSigningOut ? "Signing out…" : "Log Out"}</Text>
       </Button>
