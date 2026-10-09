@@ -5,8 +5,10 @@ import { PortalHost } from "@rn-primitives/portal";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { PostHogProvider } from "posthog-react-native";
+import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -15,12 +17,17 @@ import { useUniwind, withUniwind } from "uniwind";
 import { posthog } from "@/lib/analytics";
 import { queryClient } from "@/lib/query-client";
 import { useNavTheme } from "@/lib/theme";
+import { restoreThemePreference } from "@/lib/theme-preference";
 import { SessionProvider } from "@/state/session";
 
 export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary,
 } from "expo-router";
+
+// Hold the splash until the saved theme is applied (see RootLayout), otherwise
+// expo-router hides it on first render and a forced theme flashes the OS one.
+void SplashScreen.preventAutoHideAsync();
 
 // `react-native-gesture-handler` is third-party, so it needs `withUniwind` to accept
 // `className`. It has to be the outermost view and has to fill the screen — gorhom's
@@ -36,6 +43,14 @@ const AnalyticsProvider = ({ children }: { children: React.ReactNode }) =>
 export default function RootLayout() {
   const { theme } = useUniwind();
   const navTheme = useNavTheme();
+
+  // restoreThemePreference never rejects, and hiding in `finally` means a
+  // storage failure can't hold the splash forever.
+  useEffect(() => {
+    void restoreThemePreference().finally(() => {
+      void SplashScreen.hideAsync();
+    });
+  }, []);
 
   return (
     <StyledGestureHandlerRootView className="flex-1">
