@@ -1,11 +1,18 @@
 import { Platform, TextInput } from "react-native";
+import { useCSSVariable } from "uniwind";
 
 import { cn } from "@/lib/utils";
 
 function Input({
   className,
+  placeholderTextColor,
   ...props
 }: React.ComponentProps<typeof TextInput> & React.RefAttributes<TextInput>) {
+  // Native placeholder color goes through the prop, not a `placeholder:` class:
+  // on Android the class-derived color goes stale when the theme changes while
+  // the app is open (STASH-32). `useCSSVariable` re-renders on theme change.
+  const mutedForeground = useCSSVariable("--color-muted-foreground");
+
   return (
     <TextInput
       className={cn(
@@ -21,10 +28,13 @@ function Input({
             "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
             "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
           ),
-          native: "placeholder:text-muted-foreground/50",
         }),
         className,
       )}
+      placeholderTextColor={
+        placeholderTextColor ??
+        (Platform.OS !== "web" && typeof mutedForeground === "string" ? mutedForeground : undefined)
+      }
       {...props}
     />
   );

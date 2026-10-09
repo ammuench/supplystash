@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useState } from "react";
 
 import { AppSafeScreen } from "@/components/app-safe-screen";
@@ -32,10 +33,15 @@ export default function SettingsScreen() {
   };
 
   return (
-    <AppSafeScreen className="items-center justify-center p-4">
+    <AppSafeScreen className="items-center justify-center gap-4 p-4">
       <Text className="text-xl font-semibold">Settings</Text>
       <Button disabled={isSigningOut} onPress={() => void handleSignOut()}>
         <Text>{isSigningOut ? "Signing out…" : "Log Out"}</Text>
+      </Button>
+      {/* TODO: remove with app/(app)/theme-swatches.tsx once the designer signs
+          off on the palette (STASH-32). */}
+      <Button variant="outline" onPress={() => router.push("/theme-swatches")}>
+        <Text>Theme swatches</Text>
       </Button>
     </AppSafeScreen>
   );
