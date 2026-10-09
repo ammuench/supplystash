@@ -3,16 +3,16 @@ import { Toasts } from "@backpackapp-io/react-native-toast";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { PostHogProvider } from "posthog-react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
 import { useUniwind, withUniwind } from "uniwind";
 
+import { RootNavigator } from "@/components/root-navigator";
 import { SplashScreenController } from "@/components/splash-screen-controller";
 import { posthog } from "@/lib/analytics";
 import { queryClient } from "@/lib/query-client";
@@ -45,7 +45,10 @@ export default function RootLayout() {
 
   return (
     <StyledGestureHandlerRootView className="flex-1">
-      <SafeAreaProvider>
+      {/* Without initialMetrics the provider renders nothing until native
+          reports the insets, which shows as a blank frame after the splash.
+          The launch-time insets are known synchronously, so pass them in. */}
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <KeyboardProvider>
           <ThemeProvider value={navTheme}>
             <QueryClientProvider client={queryClient}>
@@ -58,7 +61,7 @@ export default function RootLayout() {
                 <AnalyticsProvider>
                   <BottomSheetModalProvider>
                     <StatusBar style={theme === "dark" ? "light" : "dark"} />
-                    <Stack />
+                    <RootNavigator />
                     <PortalHost />
                     {/* Toasts sit last so they render above the stack and the
                         portal host, and inside SafeAreaProvider so they respect

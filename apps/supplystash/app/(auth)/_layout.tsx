@@ -1,20 +1,12 @@
-import { Redirect, Stack } from "expo-router";
+import { Stack } from "expo-router";
 
-import { useSession } from "@/state/session";
+// When RootNavigator's guard sends a signed-out user here, the group opens on
+// its initial route; pin it rather than rely on file ordering.
+export const unstable_settings = {
+  initialRouteName: "sign-in",
+};
 
+// Auth guarding happens in the root layout's RootNavigator (Stack.Protected).
 export default function AuthLayout() {
-  const { session, isLoading } = useSession();
-
-  // Hold the tree until the persisted session has been read; redirecting on a
-  // not-yet-loaded session would bounce a signed-in user through sign-in on every
-  // cold start. SplashScreenController keeps the splash up over this null.
-  if (isLoading) {
-    return null;
-  }
-
-  if (session) {
-    return <Redirect href="/" />;
-  }
-
   return <Stack screenOptions={{ headerShown: false }} />;
 }
