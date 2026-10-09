@@ -7,7 +7,7 @@ export default function AuthLayout() {
 
   // Hold the tree until the persisted session has been read; redirecting on a
   // not-yet-loaded session would bounce a signed-in user through sign-in on every
-  // cold start. The splash hold that makes this invisible is STASH-24.
+  // cold start. SplashScreenController keeps the splash up over this null.
   if (isLoading) {
     return null;
   }

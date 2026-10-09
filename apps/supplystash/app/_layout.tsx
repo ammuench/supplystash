@@ -8,16 +8,15 @@ import { ThemeProvider } from "expo-router/react-navigation";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { PostHogProvider } from "posthog-react-native";
-import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useUniwind, withUniwind } from "uniwind";
 
+import { SplashScreenController } from "@/components/splash-screen-controller";
 import { posthog } from "@/lib/analytics";
 import { queryClient } from "@/lib/query-client";
 import { useNavTheme } from "@/lib/theme";
-import { restoreThemePreference } from "@/lib/theme-preference";
 import { SessionProvider } from "@/state/session";
 
 export {
@@ -25,8 +24,8 @@ export {
   ErrorBoundary,
 } from "expo-router";
 
-// Hold the splash until the saved theme is applied (see RootLayout), otherwise
-// expo-router hides it on first render and a forced theme flashes the OS one.
+// Otherwise expo-router hides the splash on first render, before the saved theme
+// and session are loaded. SplashScreenController decides when it hides.
 void SplashScreen.preventAutoHideAsync();
 
 // `react-native-gesture-handler` is third-party, so it needs `withUniwind` to accept
@@ -44,14 +43,6 @@ export default function RootLayout() {
   const { theme } = useUniwind();
   const navTheme = useNavTheme();
 
-  // restoreThemePreference never rejects, and hiding in `finally` means a
-  // storage failure can't hold the splash forever.
-  useEffect(() => {
-    void restoreThemePreference().finally(() => {
-      void SplashScreen.hideAsync();
-    });
-  }, []);
-
   return (
     <StyledGestureHandlerRootView className="flex-1">
       <SafeAreaProvider>
@@ -61,6 +52,9 @@ export default function RootLayout() {
               {/* Inside QueryClientProvider: sign-out has to tear down the query
                   cache (STASH-21), so the client must already exist above it. */}
               <SessionProvider>
+                {/* Inside SessionProvider: it holds the splash until the session
+                    and the saved theme are both loaded. */}
+                <SplashScreenController />
                 <AnalyticsProvider>
                   <BottomSheetModalProvider>
                     <StatusBar style={theme === "dark" ? "light" : "dark"} />
