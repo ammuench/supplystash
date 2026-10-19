@@ -124,6 +124,21 @@ describe("# createMutationPersister", () => {
       });
     });
 
+    it("reports a client that cannot be serialized instead of rejecting", async () => {
+      // JSON.stringify throws on a BigInt, here in the fingerprint before
+      // the write is ever attempted.
+      const { storage } = createStorage();
+
+      await expect(
+        createMutationPersister(storage).persistClient(withMutation(1n)),
+      ).resolves.toBeUndefined();
+
+      expect(storage.setItem).not.toHaveBeenCalled();
+      expect(capture).toHaveBeenCalledWith("paused_mutation_persist_failed", {
+        message: expect.stringContaining("BigInt"),
+      });
+    });
+
     it("retries a write that failed instead of treating it as saved", async () => {
       const { storage } = createStorage();
       storage.setItem.mockRejectedValueOnce(new Error("disk full"));

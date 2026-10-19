@@ -35,12 +35,12 @@ export const createMutationPersister = (storage: AsyncStorage<string>): Persiste
   return {
     persistClient: (client) =>
       serialize(async () => {
-        const next = fingerprint(client);
-        if (next === lastWritten) {
-          return;
-        }
-
         try {
+          const next = fingerprint(client);
+          if (next === lastWritten) {
+            return;
+          }
+
           await storage.setItem(PAUSED_MUTATIONS_KEY, JSON.stringify(client));
           // Only after the write lands, so a failed write is retried on the
           // next event instead of being skipped as already saved.
@@ -48,7 +48,8 @@ export const createMutationPersister = (storage: AsyncStorage<string>): Persiste
         } catch (error) {
           // A rethrow would only become an unhandled rejection, since nothing
           // awaits the save. A failed write can lose a queued check-off on
-          // force-quit, so it is reported rather than swallowed.
+          // force-quit, so it is reported rather than swallowed. Fingerprinting
+          // is inside the try because a BigInt or circular value throws there.
           capture("paused_mutation_persist_failed", {
             message: error instanceof Error ? error.message : String(error),
           });
