@@ -19,27 +19,41 @@ export const createMutationPersister = (storage: AsyncStorage<string>): Persiste
 
   let lastWritten: string | undefined;
 
-  return {
-    persistClient: async (client) => {
-      const next = fingerprint(client);
-      if (next === lastWritten) {
-        return;
-      }
+  // TanStack fires saves without awaiting them, so they can overlap. Each
+  // write runs only after the one before it lands, and compares against
+  // `lastWritten` only then. Otherwise empty -> paused -> empty skips the final
+  // save as matching the first, and the pending paused write lands last.
+  let queue: Promise<void> = Promise.resolve();
+  const serialize = (task: () => Promise<void>) => {
+    const run = queue.then(task);
+    // A rejected task still rejects for its own caller, but must not block
+    // the writes queued after it.
+    queue = run.catch(() => {});
+    return run;
+  };
 
-      try {
-        await storage.setItem(PAUSED_MUTATIONS_KEY, JSON.stringify(client));
-        // Only after the write lands, so a failed write is retried on the next
-        // event instead of being skipped as already saved.
-        lastWritten = next;
-      } catch (error) {
-        // TanStack fires saves without awaiting them, so a rethrow would only
-        // become an unhandled rejection. A failed write can lose a queued
-        // check-off on force-quit, so it is reported rather than swallowed.
-        capture("paused_mutation_persist_failed", {
-          message: error instanceof Error ? error.message : String(error),
-        });
-      }
-    },
+  return {
+    persistClient: (client) =>
+      serialize(async () => {
+        const next = fingerprint(client);
+        if (next === lastWritten) {
+          return;
+        }
+
+        try {
+          await storage.setItem(PAUSED_MUTATIONS_KEY, JSON.stringify(client));
+          // Only after the write lands, so a failed write is retried on the
+          // next event instead of being skipped as already saved.
+          lastWritten = next;
+        } catch (error) {
+          // A rethrow would only become an unhandled rejection, since nothing
+          // awaits the save. A failed write can lose a queued check-off on
+          // force-quit, so it is reported rather than swallowed.
+          capture("paused_mutation_persist_failed", {
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }),
     restoreClient: async () => {
       try {
         const raw = await storage.getItem(PAUSED_MUTATIONS_KEY);
@@ -67,9 +81,12 @@ export const createMutationPersister = (storage: AsyncStorage<string>): Persiste
         throw error;
       }
     },
-    removeClient: async () => {
-      lastWritten = undefined;
-      await storage.removeItem(PAUSED_MUTATIONS_KEY);
-    },
+    // Queued too, so a write still pending cannot land after the delete and
+    // put the blob back.
+    removeClient: () =>
+      serialize(async () => {
+        lastWritten = undefined;
+        await storage.removeItem(PAUSED_MUTATIONS_KEY);
+      }),
   };
 };

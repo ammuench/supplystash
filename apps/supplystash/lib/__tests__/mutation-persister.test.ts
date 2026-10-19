@@ -21,6 +21,21 @@ const createStorage = () => {
   return { store, storage };
 };
 
+// Holds the next setItem open until `release` is called, so a test can line
+// up a second save behind a write that has not landed yet.
+const holdNextWrite = ({ store, storage }: ReturnType<typeof createStorage>) => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  storage.setItem.mockImplementationOnce(async (key: string, value: string) => {
+    await gate;
+    store.set(key, value);
+  });
+
+  return release;
+};
+
 const client = (overrides: Partial<PersistedClient> = {}): PersistedClient => ({
   timestamp: 1,
   buster: "1:items",
@@ -119,6 +134,23 @@ describe("# createMutationPersister", () => {
 
       expect(storage.setItem).toHaveBeenCalledTimes(2);
     });
+
+    it("lands the latest save when saves overlap", async () => {
+      // empty -> paused -> empty, with the paused write still pending when
+      // the mutation settles. The final empty save must not be skipped as
+      // matching the first, or the settled mutation replays next launch.
+      const backing = createStorage();
+      const persister = createMutationPersister(backing.storage);
+      await persister.persistClient(client());
+
+      const release = holdNextWrite(backing);
+      const paused = persister.persistClient(withMutation("milk"));
+      const settled = persister.persistClient(client());
+      release();
+      await Promise.all([paused, settled]);
+
+      expect(JSON.parse(backing.store.get(PAUSED_MUTATIONS_KEY)!)).toEqual(client());
+    });
   });
 
   describe("## restoreClient", () => {
@@ -188,6 +220,19 @@ describe("# createMutationPersister", () => {
 
       await persister.persistClient(client());
       expect(store.has(PAUSED_MUTATIONS_KEY)).toBe(true);
+    });
+
+    it("does not let a pending write put the blob back after the delete", async () => {
+      const backing = createStorage();
+      const persister = createMutationPersister(backing.storage);
+
+      const release = holdNextWrite(backing);
+      const pending = persister.persistClient(withMutation("milk"));
+      const removed = persister.removeClient();
+      release();
+      await Promise.all([pending, removed]);
+
+      expect(backing.store.has(PAUSED_MUTATIONS_KEY)).toBe(false);
     });
   });
 });
