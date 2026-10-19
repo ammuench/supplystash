@@ -52,8 +52,11 @@ blob (STASH-36, not built yet).
   [query-keys.md](./query-keys.md) rule 6.
 - **Buster** = `` `${SCHEMA_VERSION}:${PERSISTED_QUERY_ROOTS.join(",")}` ``. Bump
   `SCHEMA_VERSION` when a persisted row's shape changes. Changing the allowlist busts the cache
-  on its own: with `maxAge: Infinity` nothing expires, so a removed root would otherwise sit on
-  disk forever. Adding a root costs one refetch of everything.
+  on its own: with `maxAge: Infinity` nothing expires, so the buster is the only thing that
+  marks a removed root's rows as stale. Adding a root costs one refetch of everything.
+- **Busted rows are deleted only when read.** Lazy restore never reads a non-allowlisted row,
+  so a removed root's rows stay on disk until STASH-37's boot `restoreQueries()` pass, which
+  reads every row and deletes busted ones. Until then they are dead weight, never served.
 - **Restore is lazy.** Each query reads its row when it first runs; `useIsRestoring()` does not
   see it. The cold-start splash gate is STASH-37. `restoreQueries` ignores `filters`, so that
   gate must not restore more than the allowlist.

@@ -20,7 +20,9 @@ export const PERSISTED_QUERY_ROOTS = [
 ] as const satisfies ReadonlyArray<keyof typeof queryKeys>;
 
 // The roots are part of the buster. With `maxAge: Infinity` nothing expires, so
-// a root removed from the list would otherwise leave its entries on disk forever.
+// this is what marks a removed root's rows as stale. Marking is not deleting:
+// lazy restore never reads a non-allowlisted row, so the boot `restoreQueries()`
+// pass (STASH-37), which reads every row, is what removes them.
 export const QUERY_CACHE_BUSTER = `${SCHEMA_VERSION}:${PERSISTED_QUERY_ROOTS.join(",")}`;
 
 export const isPersistedQuery = (query: Query) =>
