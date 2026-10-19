@@ -1,5 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 
+import { queryPersister } from "@/lib/query-persister";
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -11,6 +13,8 @@ export const queryClient = new QueryClient({
       // in memory and never reach disk. See docs/persistence.md.
       gcTime: Infinity,
       retry: 2,
+      // Native only; undefined on web. Only allowlisted roots reach disk.
+      persister: queryPersister?.persisterFn,
     },
     mutations: {
       // Membership and home management are online-only, so a failed mutation is

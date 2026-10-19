@@ -2,10 +2,10 @@
 
 There are **two independent persistence layers**. They are easy to conflate; keep them separate.
 
-| Layer            | Stores                                                            | Backend                                                                                                                                                                   | Status                                                                                                                                              |
-| ---------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Auth session** | Supabase JWT + refresh token                                      | `LargeSecureStore` — AES-256 key in `expo-secure-store`, ciphertext in `@react-native-async-storage/async-storage`. Web: none (supabase-js falls back to `localStorage`). | **Done.** `apps/supplystash/lib/supabase.ts`. Near-verbatim from Supabase's Expo guide; deliberately not "optimized".                               |
-| **Query cache**  | Dehydrated TanStack Query cache + paused (offline) mutation queue | `expo-sqlite/kv-store` on native. Web: none — memory-only, refresh means refetch.                                                                                         | **Not wired.** Package is installed (so no dev-build rebuild is needed later); the persister is built in Project 4 — Offline & Realtime Foundation. |
+| Layer            | Stores                                                            | Backend                                                                                                                                                                   | Status                                                                                                                |
+| ---------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Auth session** | Supabase JWT + refresh token                                      | `LargeSecureStore` — AES-256 key in `expo-secure-store`, ciphertext in `@react-native-async-storage/async-storage`. Web: none (supabase-js falls back to `localStorage`). | **Done.** `apps/supplystash/lib/supabase.ts`. Near-verbatim from Supabase's Expo guide; deliberately not "optimized". |
+| **Query cache**  | Dehydrated TanStack Query cache + paused (offline) mutation queue | `expo-sqlite/kv-store` on native. Web: none — memory-only, refresh means refetch.                                                                                         | **Read cache wired** (STASH-35). Paused-mutation queue pending (STASH-36).                                            |
 
 ## Auth session (Project 1 — settled)
 
@@ -16,7 +16,7 @@ plaintext (standard web tradeoff, not an oversight). **Nothing about this layer 
 
 `expo-sqlite` plays **no part** here — it exists in the tree only for the query-cache layer below.
 
-## Query cache (Project 4 — backend chosen, not built)
+## Query cache (Project 4 — read cache wired)
 
 Backed by `expo-sqlite/kv-store`. Why, from architecture §5.4:
 
@@ -35,5 +35,32 @@ Backed by `expo-sqlite/kv-store`. Why, from architecture §5.4:
 Two persisters, split by concern (architecture §5.4): a per-query persister
 (`experimental_createQueryPersister`) for the read cache so write cost is flat in home count,
 and `persistQueryClient` with `shouldDehydrateQuery: () => false` for the small paused-mutation
-blob. Persisted resources: `items`, `categories`, `shopping_list_items`, `homes` only — see
-[query-keys.md](./query-keys.md) rule 6.
+blob (STASH-36, not built yet).
+
+### Read cache (built)
+
+| File                                                                                 | Role                                                                                                                  |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| [`lib/query-cache-storage.ts`](../apps/supplystash/lib/query-cache-storage.ts)       | kv-store adapter, including the `entries()` that `restoreQueries` and `persisterGc` need. Own `query-cache` database. |
+| [`lib/query-persister-config.ts`](../apps/supplystash/lib/query-persister-config.ts) | `PERSISTED_QUERY_ROOTS` allowlist, `SCHEMA_VERSION`, `QUERY_CACHE_BUSTER`. Platform-free.                             |
+| [`lib/query-persister.native.ts`](../apps/supplystash/lib/query-persister.native.ts) | The persister. `maxAge: Infinity`, `filters` = the allowlist.                                                         |
+| [`lib/query-persister.ts`](../apps/supplystash/lib/query-persister.ts)               | Web stub: `undefined`. Metro picks it on web, which keeps expo-sqlite out of the web bundle.                          |
+
+`lib/query-client.ts` sets `defaultOptions.queries.persister` to `queryPersister?.persisterFn`.
+
+- **Allowlist:** `items`, `categories`, `shoppingList`, `homes` — see
+  [query-keys.md](./query-keys.md) rule 6.
+- **Buster** = `` `${SCHEMA_VERSION}:${PERSISTED_QUERY_ROOTS.join(",")}` ``. Bump
+  `SCHEMA_VERSION` when a persisted row's shape changes. Changing the allowlist busts the cache
+  on its own: with `maxAge: Infinity` nothing expires, so the buster is the only thing that
+  marks a removed root's rows as stale. Adding a root costs one refetch of everything.
+- **Busted rows are deleted only when read.** Lazy restore never reads a non-allowlisted row,
+  so a removed root's rows stay on disk until STASH-37's boot `restoreQueries()` pass, which
+  reads every row and deletes busted ones. Until then they are dead weight, never served.
+- **Restore is lazy.** Each query reads its row when it first runs; `useIsRestoring()` does not
+  see it. The cold-start splash gate is STASH-37. `restoreQueries` ignores `filters`, so that
+  gate must not restore more than the allowlist.
+- **Sign-out does not wipe disk yet.** `queryClient.clear()` only empties memory. STASH-38
+  clears the `query-cache` database.
+- **Writes follow `queryFn` only.** A query is saved after it fetches, so `setQueryData`
+  (optimistic updates) reaches disk only on the next refetch.

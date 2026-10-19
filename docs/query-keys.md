@@ -30,12 +30,13 @@ Origin: `supply-stash-architecture.md` §5.3.
 
 6. **Persistence allowlist (Project 4).** Only `items`, `categories`, `shoppingList`, and
    `homes` keys are persisted to disk. Everything else — history modal, barcode lookups — is
-   memory-only. Adding a key to the persisted set is a deliberate change to the persister's
-   `filters`, not a default.
+   memory-only. Adding a key to the persisted set is a deliberate edit to
+   `PERSISTED_QUERY_ROOTS` in `lib/query-persister-config.ts`, not a default. Changing that list
+   busts the persisted cache automatically.
 
-7. **Discard a persisted cache only by bumping `buster`** (a schema-version constant on the
-   persister). Never hand-invalidate a whole resource on home switch — that is the bug rule 1
-   exists to prevent.
+7. **Discard a persisted cache only by bumping `SCHEMA_VERSION`** in
+   `lib/query-persister-config.ts` (it feeds the persister's `buster`). Never hand-invalidate a
+   whole resource on home switch — that is the bug rule 1 exists to prevent.
 
 ## Adding a new query key
 
@@ -44,5 +45,5 @@ Origin: `supply-stash-architecture.md` §5.3.
    and `enabled: !!homeId`.
 3. If the underlying table emits Realtime changes, add a matching `postgres_changes` handler in
    `state/useRealtimeBridge.ts` that invalidates the same key.
-4. Decide persistence: if the data must survive a cold start offline, add the table to the
-   persister allowlist; otherwise leave it memory-only.
+4. Decide persistence: if the data must survive a cold start offline, add its root to
+   `PERSISTED_QUERY_ROOTS`; otherwise leave it memory-only.
