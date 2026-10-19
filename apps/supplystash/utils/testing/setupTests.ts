@@ -80,6 +80,47 @@ jest.mock("expo-secure-store", () => {
   };
 });
 
+// kv-store is backed by native SQLite, which does not exist under jest. Each
+// named database gets its own in-memory map, so the query cache can be
+// round-tripped for real. `__databases` lets a suite seed or clear storage.
+jest.mock("expo-sqlite/kv-store", () => {
+  const databases = new Map<string, Map<string, string>>();
+
+  class SQLiteStorage {
+    private readonly store: Map<string, string>;
+
+    constructor(databaseName: string) {
+      if (!databases.has(databaseName)) {
+        databases.set(databaseName, new Map());
+      }
+      this.store = databases.get(databaseName)!;
+    }
+
+    async getItemAsync(key: string) {
+      return this.store.get(key) ?? null;
+    }
+
+    async setItemAsync(key: string, value: string) {
+      this.store.set(key, value);
+    }
+
+    async removeItemAsync(key: string) {
+      return this.store.delete(key);
+    }
+
+    async getAllKeysAsync() {
+      return [...this.store.keys()];
+    }
+
+    async clearAsync() {
+      this.store.clear();
+      return true;
+    }
+  }
+
+  return { __databases: databases, SQLiteStorage };
+});
+
 // Both of these are native modules with no jest implementation, and lib/auth.ts
 // imports them at module scope for the OAuth flow. The real `createURL` returns
 // an `http://` origin on web and the custom scheme on native, and the mock
