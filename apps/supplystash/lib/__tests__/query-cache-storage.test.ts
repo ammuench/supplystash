@@ -15,6 +15,10 @@ describe("# createKvStorage", () => {
     await store.clearAsync();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("round-trips a value", async () => {
     await storage.setItem("a", "1");
 
@@ -43,6 +47,16 @@ describe("# createKvStorage", () => {
       ]),
     );
     expect(await storage.entries!()).toHaveLength(2);
+  });
+
+  it("skips a key whose row is gone by the time it is read", async () => {
+    await storage.setItem("a", "1");
+    await storage.setItem("b", "2");
+    // Removed between `getAllKeysAsync` and `getItemAsync`, e.g. by a
+    // concurrent persisterGc.
+    jest.spyOn(store, "getItemAsync").mockImplementation(async (key) => (key === "b" ? null : "1"));
+
+    expect(await storage.entries!()).toEqual([["a", "1"]]);
   });
 });
 

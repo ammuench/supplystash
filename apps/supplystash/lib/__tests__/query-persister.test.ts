@@ -81,6 +81,17 @@ describe("# queryPersister", () => {
       ]);
     });
 
+    it("ignores a non-allowlisted row on disk and runs queryFn", async () => {
+      // The filter gates reads too, not just writes: a row left over from
+      // before a root was dropped must not be served.
+      const key = queryKeys.itemHistory("home-1", "item-1");
+      seed(key, ["from disk"], QUERY_CACHE_BUSTER);
+
+      const data = await createClient().fetchQuery({ queryKey: key, queryFn: () => ["fresh"] });
+
+      expect(data).toEqual(["fresh"]);
+    });
+
     it("discards an entry saved under a different buster and refetches", async () => {
       const key = queryKeys.categories("home-1");
       seed(key, ["stale"], "0:items");
