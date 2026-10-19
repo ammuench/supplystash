@@ -115,6 +115,43 @@ describe("# QueryProvider (native)", () => {
       await waitFor(() => expect(savedClient()?.clientState.mutations).toEqual([]));
     });
 
+    it("clears a settled replay from disk while another is still in flight", async () => {
+      // Queue two check-offs offline, then force-quit.
+      const first = launch({ mutationFn: jest.fn() });
+      await first.restored();
+      onlineManager.setOnline(false);
+      for (const itemId of ["item-fast", "item-slow"]) {
+        void first.client
+          .getMutationCache()
+          .build(first.client, { mutationKey: FIXTURE_KEY })
+          .execute(itemId);
+      }
+      await waitFor(() => expect(savedClient()?.clientState.mutations).toHaveLength(2));
+      first.view.unmount();
+
+      // item-fast settles before the provider starts saving, item-slow is
+      // held open. Nothing else fires a cache event after that.
+      onlineManager.setOnline(true);
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const mutationFn = jest.fn(async (itemId: string) => {
+        if (itemId === "item-slow") {
+          await gate;
+        }
+        return { id: itemId };
+      });
+      launch({ mutationFn });
+
+      await waitFor(() => expect(mutationFn).toHaveBeenCalledTimes(2));
+      // In-flight replays are not paused, so neither belongs on disk. Before
+      // the fix item-fast stayed there until item-slow settled.
+      await waitFor(() => expect(savedClient()?.clientState.mutations).toEqual([]));
+
+      release();
+    });
+
     it("finishes restoring while offline, leaving the queue paused on disk", async () => {
       // An unsettled replay must not hold `useIsRestoring()`, or no query
       // could read the cache until the network is back.
