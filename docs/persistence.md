@@ -5,7 +5,7 @@ There are **two independent persistence layers**. They are easy to conflate; kee
 | Layer            | Stores                                                            | Backend                                                                                                                                                                   | Status                                                                                                                |
 | ---------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | **Auth session** | Supabase JWT + refresh token                                      | `LargeSecureStore` — AES-256 key in `expo-secure-store`, ciphertext in `@react-native-async-storage/async-storage`. Web: none (supabase-js falls back to `localStorage`). | **Done.** `apps/supplystash/lib/supabase.ts`. Near-verbatim from Supabase's Expo guide; deliberately not "optimized". |
-| **Query cache**  | Dehydrated TanStack Query cache + paused (offline) mutation queue | `expo-sqlite/kv-store` on native. Web: none — memory-only, refresh means refetch.                                                                                         | **Read cache wired** (STASH-35). Paused-mutation queue pending (STASH-36).                                            |
+| **Query cache**  | Dehydrated TanStack Query cache + paused (offline) mutation queue | `expo-sqlite/kv-store` on native. Web: none — memory-only, refresh means refetch.                                                                                         | **Read cache wired** (STASH-35). **Paused-mutation queue wired** (STASH-36).                                          |
 
 ## Auth session (Project 1 — settled)
 
@@ -16,7 +16,7 @@ plaintext (standard web tradeoff, not an oversight). **Nothing about this layer 
 
 `expo-sqlite` plays **no part** here — it exists in the tree only for the query-cache layer below.
 
-## Query cache (Project 4 — read cache wired)
+## Query cache (Project 4 — read cache + paused-mutation queue wired)
 
 Backed by `expo-sqlite/kv-store`. Why, from architecture §5.4:
 
@@ -35,7 +35,7 @@ Backed by `expo-sqlite/kv-store`. Why, from architecture §5.4:
 Two persisters, split by concern (architecture §5.4): a per-query persister
 (`experimental_createQueryPersister`) for the read cache so write cost is flat in home count,
 and `persistQueryClient` with `shouldDehydrateQuery: () => false` for the small paused-mutation
-blob (STASH-36, not built yet).
+blob (STASH-36). Both live in the `query-cache` database.
 
 ### Read cache (built)
 
@@ -64,3 +64,55 @@ blob (STASH-36, not built yet).
   clears the `query-cache` database.
 - **Writes follow `queryFn` only.** A query is saved after it fetches, so `setQueryData`
   (optimistic updates) reaches disk only on the next refetch.
+
+### Paused-mutation queue (built)
+
+| File                                                                                               | Role                                                                                                                                |
+| -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| [`lib/mutation-persister.ts`](../apps/supplystash/lib/mutation-persister.ts)                       | Hand-rolled `Persister` over the kv-store adapter. One blob under `PAUSED_MUTATIONS_KEY`. Skips unchanged writes, reports failures. |
+| [`components/query-provider.native.tsx`](../apps/supplystash/components/query-provider.native.tsx) | `PersistQueryClientProvider`: mutations only, `maxAge: Infinity`, the read cache's buster. Replays the queue once restore finishes. |
+| [`components/query-provider.tsx`](../apps/supplystash/components/query-provider.tsx)               | Web: plain `QueryClientProvider`. Nothing is persisted.                                                                             |
+| [`lib/postgrest-error.ts`](../apps/supplystash/lib/postgrest-error.ts)                             | `postgrestErrorCode(error)` for rejection handling.                                                                                 |
+
+- **Same database, different key.** The blob sits in `query-cache` under `paused-mutations`, so
+  STASH-38's wipe clears both persisters at once. The key must never start with
+  `tanstack-query-`: `restoreQueries` and `persisterGc` treat every key with that prefix as a
+  query row.
+- **Shared buster.** Bumping `SCHEMA_VERSION` or changing the allowlist also drops any queued
+  check-offs on the next launch. Deliberate: a queued write against a reshaped row is not safe
+  to replay.
+- **Writes skip unchanged blobs, not throttled ones.** `persistQueryClient` saves on every
+  query and mutation event. Queries never enter this blob, so most saves are identical and are
+  skipped by comparing `buster` + `clientState` (`timestamp` is ignored). A changed blob is
+  written immediately, so a force-quit right after a check-off cannot lose it. No
+  `query-async-storage-persister`: its throttle opens exactly that loss window.
+- **Failures are reported, not thrown.** TanStack fires saves without awaiting them, so a failed
+  write is caught and sent as `paused_mutation_persist_failed`; the next cache event retries it.
+  A failed restore sends `paused_mutation_restore_failed` and rethrows, so TanStack discards the
+  unreadable blob.
+- **Replay does not hold the restore.** `onSuccess` starts `resumePausedMutations()` without
+  returning it. Offline, the replay does not settle until the network is back, and the provider
+  holds `useIsRestoring()` true until `onSuccess` settles, which would block every query from
+  reading the cache. One explicit save runs once the replays settle, because the provider only
+  starts saving after restore and a fast replay would otherwise leave its stale entry on disk.
+- **`useIsRestoring()` is true while this blob restores.** It does not cover the lazy read cache;
+  that gap is STASH-37's.
+- **Replay needs connectivity wiring.** On RN, `onlineManager` never goes offline until STASH-39
+  backs it with NetInfo, so nothing pauses in the app yet. The round trip is covered by
+  `components/__tests__/query-provider.test.tsx` instead.
+
+#### Writing an offline-capable mutation
+
+A persisted mutation is saved without its functions, so it can only be replayed through
+defaults registered under its key.
+
+1. Give it a `mutationKey`.
+2. Register its `mutationFn` (and `onError`, retry) with `queryClient.setMutationDefaults` at
+   **module scope**, in a module `app/_layout.tsx` imports. Defaults registered later are missing
+   when `QueryProvider` restores, and the restored mutation has nothing to run.
+3. In the `mutationFn`, call supabase-js with `.throwOnError()`. It throws the `PostgrestError`
+   itself, so `.code` reaches `onError`. Wrapping `error.message` in a new `Error` loses it.
+4. In `onError`, branch on `postgrestErrorCode(error)` (`42501` = RLS denied, `PGRST116` = no
+   row), never on message text.
+
+The global default stays `mutations.retry: 0`. Retry policy for offline mutations is Project 7's.
