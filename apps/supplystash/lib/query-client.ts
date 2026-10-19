@@ -20,7 +20,11 @@ export const queryClient = new QueryClient({
       // Membership and home management are online-only, so a failed mutation is
       // a real failure the UI must surface rather than silently retry. A
       // mutation that may be queued offline opts in to retries through
-      // `queryClient.setMutationDefaults` under its own `mutationKey`.
+      // `queryClient.setMutationDefaults` under its own `mutationKey`. The
+      // defaults carry its `mutationFn` (a function can't be persisted), so
+      // they must be registered at module scope, in a module app/_layout.tsx
+      // imports, so they exist before QueryProvider restores the paused
+      // queue. See docs/persistence.md.
       retry: 0,
     },
   },

@@ -2,7 +2,6 @@ import "@/global.css";
 import { Toasts } from "@backpackapp-io/react-native-toast";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "expo-router/react-navigation";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -12,6 +11,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
 import { useUniwind, withUniwind } from "uniwind";
 
+import { QueryProvider } from "@/components/query-provider";
 import { RootNavigator } from "@/components/root-navigator";
 import { SplashScreenController } from "@/components/splash-screen-controller";
 import { posthog } from "@/lib/analytics";
@@ -51,8 +51,8 @@ export default function RootLayout() {
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <KeyboardProvider>
           <ThemeProvider value={navTheme}>
-            <QueryClientProvider client={queryClient}>
-              {/* Inside QueryClientProvider: sign-out has to tear down the query
+            <QueryProvider client={queryClient}>
+              {/* Inside QueryProvider: sign-out has to tear down the query
                   cache (STASH-21), so the client must already exist above it. */}
               <SessionProvider>
                 {/* Inside SessionProvider: it holds the splash until the session
@@ -70,7 +70,7 @@ export default function RootLayout() {
                   </BottomSheetModalProvider>
                 </AnalyticsProvider>
               </SessionProvider>
-            </QueryClientProvider>
+            </QueryProvider>
           </ThemeProvider>
         </KeyboardProvider>
       </SafeAreaProvider>
