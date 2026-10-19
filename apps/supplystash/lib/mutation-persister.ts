@@ -44,6 +44,10 @@ export const createMutationPersister = (storage: AsyncStorage<string>): Persiste
       try {
         const raw = await storage.getItem(PAUSED_MUTATIONS_KEY);
         if (!raw) {
+          // The disk may have been cleared behind this persister's back.
+          // Forgetting the last write keeps the next save from being skipped
+          // as already on disk.
+          lastWritten = undefined;
           return undefined;
         }
 

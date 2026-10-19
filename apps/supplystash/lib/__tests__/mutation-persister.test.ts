@@ -150,6 +150,20 @@ describe("# createMutationPersister", () => {
       });
     });
 
+    it("writes again after finding the disk cleared behind its back", async () => {
+      // e.g. the whole query-cache database wiped without going through
+      // removeClient.
+      const { store, storage } = createStorage();
+      const persister = createMutationPersister(storage);
+      await persister.persistClient(client());
+      store.clear();
+
+      await persister.restoreClient();
+      await persister.persistClient(client());
+
+      expect(store.has(PAUSED_MUTATIONS_KEY)).toBe(true);
+    });
+
     it("does not rewrite the blob it just restored", async () => {
       const { storage } = createStorage();
       await createMutationPersister(storage).persistClient(withMutation("milk"));
