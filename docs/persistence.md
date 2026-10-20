@@ -93,8 +93,15 @@ blob (STASH-36). Both live in the `query-cache` database.
 - **Replay does not hold the restore.** `onSuccess` starts `resumePausedMutations()` without
   returning it. Offline, the replay does not settle until the network is back, and the provider
   holds `useIsRestoring()` true until `onSuccess` settles, which would block every query from
-  reading the cache. One explicit save runs once the replays settle, because the provider only
-  starts saving after restore and a fast replay would otherwise leave its stale entry on disk.
+  reading the cache. The provider only starts saving on the commit after restore, so `onSuccess`
+  also saves on every mutation event until the replays settle, then once more. Otherwise a
+  replay that settles in that gap leaves its stale entry on disk to replay again.
+- **Replays are at-most-once.** Only _paused_ mutations are saved. A resumed replay stops being
+  paused as soon as its request starts, so its entry leaves disk while the request is in
+  flight. A force-quit in that window loses the write if the server never received it. The
+  alternative (keep in-flight replays on disk, restore them as paused) is at-least-once and
+  would replay a write the server already applied, so it waits until every offline mutation is
+  idempotent. Tracked in STASH-44.
 - **`useIsRestoring()` is true while this blob restores.** It does not cover the lazy read cache;
   that gap is STASH-37's.
 - **Replay needs connectivity wiring.** On RN, `onlineManager` never goes offline until STASH-39
@@ -114,5 +121,10 @@ defaults registered under its key.
    itself, so `.code` reaches `onError`. Wrapping `error.message` in a new `Error` loses it.
 4. In `onError`, branch on `postgrestErrorCode(error)` (`42501` = RLS denied, `PGRST116` = no
    row), never on message text.
+5. Make it **idempotent**: running it twice must leave the same rows as running it once. Inserts
+   take a client-generated id (a replay then hits the primary key instead of adding a second
+   row); updates set absolute values (`checked: true`), never relative ones (`quantity + 1`).
+   Today replays are at-most-once, so this is not yet load-bearing, but STASH-44's switch to
+   at-least-once depends on it.
 
 The global default stays `mutations.retry: 0`. Retry policy for offline mutations is Project 7's.
