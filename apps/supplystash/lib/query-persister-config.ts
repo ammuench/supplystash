@@ -25,5 +25,11 @@ export const PERSISTED_QUERY_ROOTS = [
 // pass (STASH-37), which reads every row, is what removes them.
 export const QUERY_CACHE_BUSTER = `${SCHEMA_VERSION}:${PERSISTED_QUERY_ROOTS.join(",")}`;
 
+// The paused-mutation blob's key. It shares the `query-cache` database so one
+// wipe clears both persisters, and it must not start with the read persister's
+// `tanstack-query-` prefix, or `restoreQueries` and `persisterGc` would parse it
+// as a query row.
+export const PAUSED_MUTATIONS_KEY = "paused-mutations";
+
 export const isPersistedQuery = (query: Query) =>
   (PERSISTED_QUERY_ROOTS as readonly unknown[]).includes(query.queryKey[0]);
