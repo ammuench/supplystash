@@ -214,7 +214,7 @@ describe("# createMutationPersister", () => {
     it("drops what it read when a sign-out wipe lands mid-read", async () => {
       // A refresh token rejected at launch: the wipe arrives while the boot
       // restore is still reading. Returning the blob would hydrate and replay
-      // the old account's check-offs.
+      // the old account's changes.
       const { store, storage } = createStorage();
       store.set(PAUSED_MUTATIONS_KEY, JSON.stringify(withMutation("milk")));
       let releaseRead!: () => void;
@@ -235,6 +235,8 @@ describe("# createMutationPersister", () => {
       await expect(restored).resolves.toBeUndefined();
       await removed;
       expect(store.has(PAUSED_MUTATIONS_KEY)).toBe(false);
+      // The expired-session toast never sees these, so they are reported here.
+      expect(capture).toHaveBeenCalledWith("paused_mutations_dropped_on_sign_out", { count: 1 });
     });
 
     it("reads nothing when the wipe was called first, even if its delete is still queued", async () => {

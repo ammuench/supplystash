@@ -29,3 +29,11 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Writes queued while offline. Sign-out discards them (the next account must
+// not replay them), so both sign-out paths count them first to warn.
+export const countPausedMutations = (client: QueryClient) =>
+  client
+    .getMutationCache()
+    .getAll()
+    .filter((mutation) => mutation.state.isPaused).length;

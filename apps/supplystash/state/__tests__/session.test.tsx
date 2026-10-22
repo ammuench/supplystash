@@ -4,10 +4,15 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 
 import { consumeUserInitiatedSignOut } from "@/lib/auth";
 import { wipeAppQueryCache } from "@/lib/query-cache-wipe";
-import { queryClient } from "@/lib/query-client";
+import { countPausedMutations, queryClient } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
 import { toastInfo } from "@/lib/toast";
-import { SESSION_EXPIRED_MESSAGE, SessionProvider, useSession } from "@/state/session";
+import {
+  SESSION_EXPIRED_MESSAGE,
+  SessionProvider,
+  sessionExpiredMessage,
+  useSession,
+} from "@/state/session";
 
 jest.mock("@/lib/supabase", () => ({
   supabase: {
@@ -21,6 +26,7 @@ jest.mock("@/lib/supabase", () => ({
 }));
 
 jest.mock("@/lib/query-client", () => ({
+  countPausedMutations: jest.fn(),
   queryClient: { clear: jest.fn() },
 }));
 
@@ -48,6 +54,7 @@ jest.mock("@/lib/toast", () => ({
 const auth = supabase.auth as jest.Mocked<typeof supabase.auth>;
 const clearCache = queryClient.clear as jest.Mock;
 const wipeDisk = wipeAppQueryCache as jest.Mock;
+const countQueued = countPausedMutations as jest.Mock;
 const consumeSignOutIntent = consumeUserInitiatedSignOut as jest.Mock;
 const showInfoToast = toastInfo as jest.Mock;
 
@@ -66,6 +73,7 @@ beforeEach(() => {
   }) as never);
   auth.getSession.mockResolvedValue({ data: { session: null } } as never);
   consumeSignOutIntent.mockReturnValue(false);
+  countQueued.mockReturnValue(0);
   mockBootPass.promise = new Promise<void>((resolve) => {
     mockBootPass.settle = resolve;
   });
@@ -196,6 +204,30 @@ describe("# SessionProvider", () => {
     expect(clearCache).toHaveBeenCalledTimes(1);
   });
 
+  it("reports queued changes an involuntary sign-out discarded, counted before the clear", async () => {
+    // Nobody was asked first, so the loss must not be silent.
+    countQueued.mockImplementation(() => (clearCache.mock.calls.length === 0 ? 2 : 0));
+    auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.session).toBe(SESSION));
+
+    act(() => emit("SIGNED_OUT", null));
+
+    expect(showInfoToast).toHaveBeenCalledWith(sessionExpiredMessage(2));
+  });
+
+  it("does not report queued changes on a user-initiated sign-out, which confirmed the loss already", async () => {
+    consumeSignOutIntent.mockReturnValue(true);
+    countQueued.mockReturnValue(2);
+    auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.session).toBe(SESSION));
+
+    act(() => emit("SIGNED_OUT", null));
+
+    expect(showInfoToast).not.toHaveBeenCalled();
+  });
+
   it("stays quiet on a user-initiated sign-out, which already toasts its own message", async () => {
     consumeSignOutIntent.mockReturnValue(true);
     auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
@@ -238,5 +270,23 @@ describe("# SessionProvider", () => {
 
   it("throws when used outside the provider, rather than reporting a signed-out user", () => {
     expect(() => renderHook(() => useSession())).toThrow(/SessionProvider/);
+  });
+});
+
+describe("# sessionExpiredMessage", () => {
+  it("is the plain expiry notice when nothing was discarded", () => {
+    expect(sessionExpiredMessage(0)).toBe(SESSION_EXPIRED_MESSAGE);
+  });
+
+  it("names a single discarded change", () => {
+    expect(sessionExpiredMessage(1)).toBe(
+      "Your session expired, and 1 unsynced change was discarded — please sign in again.",
+    );
+  });
+
+  it("names several discarded changes", () => {
+    expect(sessionExpiredMessage(3)).toBe(
+      "Your session expired, and 3 unsynced changes were discarded — please sign in again.",
+    );
   });
 });

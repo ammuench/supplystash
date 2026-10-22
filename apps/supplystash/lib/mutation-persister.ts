@@ -90,16 +90,26 @@ export const createMutationPersister = (storage: AsyncStorage<string>): Persiste
     // Queued, and checked against `removals`, so a sign-out wipe during the
     // boot restore cannot be undone by it. TanStack hydrates and replays
     // whatever this returns, and its next save writes it back to disk, so a
-    // blob read just before the wipe would bring the old account's check-offs
+    // blob read just before the wipe would bring the old account's changes
     // back. Dropped rather than replayed: a sign-out discards queued
-    // check-offs.
+    // changes.
     restoreClient: () => {
       const removalsAtStart = removals;
 
       return serialize(async () => {
         const restored = await readClient();
+        if (removals === removalsAtStart) {
+          return restored;
+        }
 
-        return removals === removalsAtStart ? restored : undefined;
+        // Never reached memory, so the expired-session toast in
+        // state/session.tsx cannot count them. Reported here instead.
+        const dropped = restored?.clientState.mutations.length ?? 0;
+        if (dropped > 0) {
+          capture("paused_mutations_dropped_on_sign_out", { count: dropped });
+        }
+
+        return undefined;
       });
     },
     // Queued too, so a write still pending cannot land after the delete and
