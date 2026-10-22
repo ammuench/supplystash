@@ -1,7 +1,8 @@
 import { hashKey, QueryClient, type QueryKey } from "@tanstack/react-query";
+import { act, renderHook } from "@testing-library/react-native";
 
 import { capture } from "@/lib/analytics";
-import { restoreQueryCache } from "@/lib/query-cache-restore";
+import { createSettledHook, restoreQueryCache } from "@/lib/query-cache-restore";
 import { queryCacheStorage } from "@/lib/query-cache-storage";
 import { QUERY_CACHE_BUSTER } from "@/lib/query-persister-config";
 // Imported by its platform name: tsc resolves the bare path to the web file,
@@ -94,5 +95,55 @@ describe("# restoreQueryCache", () => {
     await expect(restoreQueryCache(createClient(), undefined)).resolves.toBeUndefined();
 
     expect(entries).not.toHaveBeenCalled();
+  });
+});
+
+// Hands the test a promise and its settlers, so it controls when the pass ends.
+const deferred = () => {
+  let resolve!: () => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<void>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
+
+describe("# createSettledHook", () => {
+  it("is false until the promise settles", () => {
+    const { promise } = deferred();
+
+    const { result } = renderHook(createSettledHook(promise));
+
+    expect(result.current).toBe(false);
+  });
+
+  it("turns true once the promise resolves", async () => {
+    const { promise, resolve } = deferred();
+    const { result } = renderHook(createSettledHook(promise));
+
+    await act(async () => resolve());
+
+    expect(result.current).toBe(true);
+  });
+
+  it("turns true when the promise rejects too", async () => {
+    // The splash and the navigator wait on this, so they must never hang.
+    const { promise, reject } = deferred();
+    const { result } = renderHook(createSettledHook(promise));
+
+    await act(async () => reject(new Error("disk I/O error")));
+
+    expect(result.current).toBe(true);
+  });
+
+  it("is true on first render for a component mounted after the settle", async () => {
+    const { promise, resolve } = deferred();
+    const useIsSettled = createSettledHook(promise);
+    await act(async () => resolve());
+
+    const { result } = renderHook(useIsSettled);
+
+    expect(result.current).toBe(true);
   });
 });

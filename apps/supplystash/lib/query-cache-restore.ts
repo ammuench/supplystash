@@ -1,6 +1,8 @@
 import type { experimental_createQueryPersister } from "@tanstack/query-persist-client-core";
 import type { QueryClient } from "@tanstack/react-query";
 
+import { useSyncExternalStore } from "react";
+
 import { capture } from "@/lib/analytics";
 import { queryClient } from "@/lib/query-client";
 import { queryPersister } from "@/lib/query-persister";
@@ -39,3 +41,32 @@ export const restoreQueryCache = async (
 // Started on import. app/_layout.tsx imports it, through the splash
 // controller, at boot.
 export const queryCacheRestored = restoreQueryCache(queryClient, queryPersister);
+
+// A hook that is true once `promise` settles, either way: the gates on it must
+// never hang. Backed by a module-level flag, not per-component state, so every
+// consumer flips on the same render and one mounting after the settle reads
+// true on its first render. Exported for tests.
+export const createSettledHook = (promise: Promise<unknown>) => {
+  let isSettled = false;
+  const listeners = new Set<() => void>();
+  const settle = () => {
+    isSettled = true;
+    listeners.forEach((listener) => listener());
+  };
+  void promise.then(settle, settle);
+
+  const subscribe = (listener: () => void) => {
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  };
+
+  return () => useSyncExternalStore(subscribe, () => isSettled);
+};
+
+// SplashScreenController holds the splash on it and RootNavigator renders
+// nothing until it is true. The render gate matters: `restoreQueries` writes
+// with `setQueryData`, which would overwrite data a screen fetched while the
+// pass was still running.
+export const useIsQueryCacheRestored = createSettledHook(queryCacheRestored);

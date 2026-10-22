@@ -30,6 +30,12 @@ jest.mock("@/state/session", () => {
       ),
   };
 });
+// Restored unless a test says otherwise. Mocked so the real module's boot
+// restore pass does not run in this suite.
+const mockIsQueryCacheRestored = jest.fn(() => true);
+jest.mock("@/lib/query-cache-restore", () => ({
+  useIsQueryCacheRestored: () => mockIsQueryCacheRestored(),
+}));
 // utils/testing/setupTests.ts stubs expo-linking down to `createURL` for the
 // auth suites; the router needs the real module to subscribe to URLs.
 jest.mock("expo-linking", () => jest.requireActual("expo-linking"));
@@ -55,6 +61,7 @@ const routes = {
 
 beforeEach(() => {
   mockSessionStore.listeners.clear();
+  mockIsQueryCacheRestored.mockReturnValue(true);
 });
 
 describe("# RootNavigator", () => {
@@ -85,6 +92,17 @@ describe("# RootNavigator", () => {
       renderRouter(routes, { initialUrl: "/" });
 
       expect(screen.queryByText("Sign in")).not.toBeOnTheScreen();
+      expect(screen.queryByText("Inventory")).not.toBeOnTheScreen();
+    });
+
+    it("### renders nothing while the read cache is restoring", () => {
+      // A screen mounted now could fetch, then have the restore pass
+      // overwrite its fresh data with the older copy from disk.
+      mockSessionStore.value = SIGNED_IN;
+      mockIsQueryCacheRestored.mockReturnValue(false);
+
+      renderRouter(routes, { initialUrl: "/" });
+
       expect(screen.queryByText("Inventory")).not.toBeOnTheScreen();
     });
   });

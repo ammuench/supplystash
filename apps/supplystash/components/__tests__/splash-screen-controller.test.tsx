@@ -1,17 +1,23 @@
+import { useIsRestoring } from "@tanstack/react-query";
 import { act, render } from "@testing-library/react-native";
 import * as SplashScreen from "expo-splash-screen";
 
 import { SplashScreenController } from "@/components/splash-screen-controller";
+import { useIsQueryCacheRestored } from "@/lib/query-cache-restore";
 import { restoreThemePreference } from "@/lib/theme-preference";
 import { useSession } from "@/state/session";
 
 jest.mock("expo-splash-screen", () => ({ hideAsync: jest.fn() }));
 jest.mock("@/lib/theme-preference", () => ({ restoreThemePreference: jest.fn() }));
 jest.mock("@/state/session", () => ({ useSession: jest.fn() }));
+jest.mock("@/lib/query-cache-restore", () => ({ useIsQueryCacheRestored: jest.fn() }));
+jest.mock("@tanstack/react-query", () => ({ useIsRestoring: jest.fn() }));
 
 const mockedHideAsync = jest.mocked(SplashScreen.hideAsync);
 const mockedRestore = jest.mocked(restoreThemePreference);
 const mockedUseSession = jest.mocked(useSession) as jest.Mock;
+const mockedIsQueryCacheRestored = jest.mocked(useIsQueryCacheRestored);
+const mockedIsRestoring = jest.mocked(useIsRestoring);
 
 // Hands the test the resolver so it controls exactly when the theme restore
 // finishes, independently of the session.
@@ -27,6 +33,10 @@ const deferRestore = () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Both caches restored unless a test says otherwise, so the theme and
+  // session cases below test only those two signals.
+  mockedIsQueryCacheRestored.mockReturnValue(true);
+  mockedIsRestoring.mockReturnValue(false);
 });
 
 describe("# SplashScreenController", () => {
@@ -59,6 +69,28 @@ describe("# SplashScreenController", () => {
 
       expect(mockedHideAsync).not.toHaveBeenCalled();
     });
+
+    it("### while the read cache is restoring", async () => {
+      const finishRestore = deferRestore();
+      mockedUseSession.mockReturnValue({ isLoading: false });
+      mockedIsQueryCacheRestored.mockReturnValue(false);
+
+      render(<SplashScreenController />);
+      await finishRestore();
+
+      expect(mockedHideAsync).not.toHaveBeenCalled();
+    });
+
+    it("### while the paused-mutation queue is restoring", async () => {
+      const finishRestore = deferRestore();
+      mockedUseSession.mockReturnValue({ isLoading: false });
+      mockedIsRestoring.mockReturnValue(true);
+
+      render(<SplashScreenController />);
+      await finishRestore();
+
+      expect(mockedHideAsync).not.toHaveBeenCalled();
+    });
   });
 
   describe("## hides the splash", () => {
@@ -80,6 +112,19 @@ describe("# SplashScreenController", () => {
 
       render(<SplashScreenController />);
       await finishRestore();
+
+      expect(mockedHideAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it("### once the read cache restores last", async () => {
+      const finishRestore = deferRestore();
+      mockedUseSession.mockReturnValue({ isLoading: false });
+      mockedIsQueryCacheRestored.mockReturnValue(false);
+
+      const { rerender } = render(<SplashScreenController />);
+      await finishRestore();
+      mockedIsQueryCacheRestored.mockReturnValue(true);
+      rerender(<SplashScreenController />);
 
       expect(mockedHideAsync).toHaveBeenCalledTimes(1);
     });
