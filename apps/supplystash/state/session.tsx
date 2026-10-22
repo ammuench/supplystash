@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { AppState, Platform } from "react-native";
 
 import { consumeUserInitiatedSignOut } from "@/lib/auth";
+import { queryCacheRestored } from "@/lib/query-cache-restore";
 import { queryClient } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
 import { toastInfo } from "@/lib/toast";
@@ -39,6 +40,12 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       // on the same process reads the previous user's cached rows.
       if (event === "SIGNED_OUT") {
         queryClient.clear();
+        // A sign-out during the boot read-cache pass (a refresh token rejected
+        // at launch) would be undone by the rest of the pass writing the old
+        // account's rows back. Clearing again once it settles is safe:
+        // RootNavigator renders nothing until then, so no new account's data
+        // can be in the cache yet. The pass never rejects.
+        void queryCacheRestored.then(() => queryClient.clear());
         // Supabase emits this same event when a refresh token is rejected.
         // Unannounced, being bounced to sign-in mid-session reads as a crash or
         // a random logout. The deliberate path already toasts "Signed out", so

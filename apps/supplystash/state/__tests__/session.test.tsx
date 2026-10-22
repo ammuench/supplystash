@@ -23,6 +23,15 @@ jest.mock("@/lib/query-client", () => ({
   queryClient: { clear: jest.fn() },
 }));
 
+// The boot read-cache pass, held open until a test settles it. A getter so
+// each test gets the fresh promise `beforeEach` makes.
+const mockBootPass = { promise: new Promise<void>(() => {}), settle: () => {} };
+jest.mock("@/lib/query-cache-restore", () => ({
+  get queryCacheRestored() {
+    return mockBootPass.promise;
+  },
+}));
+
 jest.mock("@/lib/auth", () => ({
   consumeUserInitiatedSignOut: jest.fn(),
 }));
@@ -51,6 +60,9 @@ beforeEach(() => {
   }) as never);
   auth.getSession.mockResolvedValue({ data: { session: null } } as never);
   consumeSignOutIntent.mockReturnValue(false);
+  mockBootPass.promise = new Promise<void>((resolve) => {
+    mockBootPass.settle = resolve;
+  });
 });
 
 const renderSession = () => renderHook(() => useSession(), { wrapper: SessionProvider });
@@ -135,6 +147,21 @@ describe("# SessionProvider", () => {
     act(() => emit("SIGNED_OUT", null));
 
     expect(clearCache).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears the cache again once the boot pass settles, so its late writes do not survive sign-out", async () => {
+    // A refresh token rejected at launch signs out while the boot pass is
+    // still writing the old account's rows into memory.
+    auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.session).toBe(SESSION));
+
+    act(() => emit("SIGNED_OUT", null));
+    expect(clearCache).toHaveBeenCalledTimes(1);
+
+    await act(async () => mockBootPass.settle());
+
+    expect(clearCache).toHaveBeenCalledTimes(2);
   });
 
   it("announces an involuntary sign-out, so an expired token does not read as a crash", async () => {
