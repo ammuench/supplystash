@@ -21,8 +21,8 @@ export const PERSISTED_QUERY_ROOTS = [
 
 // The roots are part of the buster. With `maxAge: Infinity` nothing expires, so
 // this is what marks a removed root's rows as stale. Marking is not deleting:
-// lazy restore never reads a non-allowlisted row, so the boot `restoreQueries()`
-// pass (STASH-37), which reads every row, is what removes them.
+// lazy restore never reads a non-allowlisted row, so the boot pass in
+// lib/query-cache-restore.ts, which reads every row, is what removes them.
 export const QUERY_CACHE_BUSTER = `${SCHEMA_VERSION}:${PERSISTED_QUERY_ROOTS.join(",")}`;
 
 // The paused-mutation blob's key. It shares the `query-cache` database so one

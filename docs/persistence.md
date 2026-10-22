@@ -5,7 +5,7 @@ There are **two independent persistence layers**. They are easy to conflate; kee
 | Layer            | Stores                                                            | Backend                                                                                                                                                                   | Status                                                                                                                |
 | ---------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | **Auth session** | Supabase JWT + refresh token                                      | `LargeSecureStore` — AES-256 key in `expo-secure-store`, ciphertext in `@react-native-async-storage/async-storage`. Web: none (supabase-js falls back to `localStorage`). | **Done.** `apps/supplystash/lib/supabase.ts`. Near-verbatim from Supabase's Expo guide; deliberately not "optimized". |
-| **Query cache**  | Dehydrated TanStack Query cache + paused (offline) mutation queue | `expo-sqlite/kv-store` on native. Web: none — memory-only, refresh means refetch.                                                                                         | **Read cache wired** (STASH-35). **Paused-mutation queue wired** (STASH-36).                                          |
+| **Query cache**  | Dehydrated TanStack Query cache + paused (offline) mutation queue | `expo-sqlite/kv-store` on native. Web: none — memory-only, refresh means refetch.                                                                                         | **Read cache wired** (STASH-35). **Paused-mutation queue wired** (STASH-36). **Boot restore gate** (STASH-37).        |
 
 ## Auth session (Project 1 — settled)
 
@@ -45,6 +45,7 @@ blob (STASH-36). Both live in the `query-cache` database.
 | [`lib/query-persister-config.ts`](../apps/supplystash/lib/query-persister-config.ts) | `PERSISTED_QUERY_ROOTS` allowlist, `SCHEMA_VERSION`, `QUERY_CACHE_BUSTER`. Platform-free.                             |
 | [`lib/query-persister.native.ts`](../apps/supplystash/lib/query-persister.native.ts) | The persister. `maxAge: Infinity`, `filters` = the allowlist.                                                         |
 | [`lib/query-persister.ts`](../apps/supplystash/lib/query-persister.ts)               | Web stub: `undefined`. Metro picks it on web, which keeps expo-sqlite out of the web bundle.                          |
+| [`lib/query-cache-restore.ts`](../apps/supplystash/lib/query-cache-restore.ts)       | Boot `restoreQueries()` pass, started on import, and `useIsQueryCacheRestored()` for the splash and render gate.      |
 
 `lib/query-client.ts` sets `defaultOptions.queries.persister` to `queryPersister?.persisterFn`.
 
@@ -54,12 +55,20 @@ blob (STASH-36). Both live in the `query-cache` database.
   `SCHEMA_VERSION` when a persisted row's shape changes. Changing the allowlist busts the cache
   on its own: with `maxAge: Infinity` nothing expires, so the buster is the only thing that
   marks a removed root's rows as stale. Adding a root costs one refetch of everything.
-- **Busted rows are deleted only when read.** Lazy restore never reads a non-allowlisted row,
-  so a removed root's rows stay on disk until STASH-37's boot `restoreQueries()` pass, which
-  reads every row and deletes busted ones. Until then they are dead weight, never served.
-- **Restore is lazy.** Each query reads its row when it first runs; `useIsRestoring()` does not
-  see it. The cold-start splash gate is STASH-37. `restoreQueries` ignores `filters`, so that
-  gate must not restore more than the allowlist.
+- **The boot pass restores the allowlist before the first screen.** Lazy restore alone (each
+  query reads its row when it first runs) would paint an empty first screen for a frame.
+  `lib/query-cache-restore.ts` runs `restoreQueries()` at boot, once per allowlisted root:
+  it ignores the persister's `filters` and takes a single `queryKey`, not a predicate.
+  `SplashScreenController` holds the splash and `RootNavigator` renders nothing until it
+  settles. The render gate is not only cosmetic: `restoreQueries` writes with `setQueryData`,
+  which would overwrite data a screen fetched while the pass was still running.
+- **Busted rows are deleted by the boot pass.** Lazy restore never reads a non-allowlisted row,
+  so it never deletes a removed root's rows. `restoreQueries` reads every row and deletes
+  unreadable and busted ones before applying its `queryKey` filter, so the first call cleans
+  every root.
+- **A failed boot pass never holds the splash.** It sends `query_cache_restore_failed` and
+  resolves. Nothing is cleared: rows restored before the failure already passed the buster
+  check, and lazy restore still serves the rest.
 - **Sign-out does not wipe disk yet.** `queryClient.clear()` only empties memory. STASH-38
   clears the `query-cache` database.
 - **Writes follow `queryFn` only.** A query is saved after it fetches, so `setQueryData`
@@ -102,8 +111,8 @@ blob (STASH-36). Both live in the `query-cache` database.
   alternative (keep in-flight replays on disk, restore them as paused) is at-least-once and
   would replay a write the server already applied, so it waits until every offline mutation is
   idempotent. Tracked in STASH-44.
-- **`useIsRestoring()` is true while this blob restores.** It does not cover the lazy read cache;
-  that gap is STASH-37's.
+- **`useIsRestoring()` is true while this blob restores.** It does not cover the read cache;
+  `useIsQueryCacheRestored()` does. The splash waits on both.
 - **Replay needs connectivity wiring.** On RN, `onlineManager` never goes offline until STASH-39
   backs it with NetInfo, so nothing pauses in the app yet. The round trip is covered by
   `components/__tests__/query-provider.test.tsx` instead.
