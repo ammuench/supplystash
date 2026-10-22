@@ -4,12 +4,11 @@ import type { QueryClient } from "@tanstack/react-query";
 import { persistQueryClientSave } from "@tanstack/query-persist-client-core";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 
-import { createMutationPersister } from "@/lib/mutation-persister";
-import { queryCacheStorage } from "@/lib/query-cache-storage";
+import { pausedMutationPersister } from "@/lib/paused-mutation-persister.native";
 import { QUERY_CACHE_BUSTER } from "@/lib/query-persister-config";
 
 const persistOptions = {
-  persister: createMutationPersister(queryCacheStorage),
+  persister: pausedMutationPersister,
   // Same reasoning as the read cache: a check-off queued before a long trip is
   // still worth sending. Rows that changed shape are dropped by the shared
   // buster instead.
