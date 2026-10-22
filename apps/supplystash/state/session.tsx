@@ -5,6 +5,7 @@ import { AppState, Platform } from "react-native";
 
 import { consumeUserInitiatedSignOut } from "@/lib/auth";
 import { queryCacheRestored } from "@/lib/query-cache-restore";
+import { wipeAppQueryCache } from "@/lib/query-cache-wipe";
 import { queryClient } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
 import { toastInfo } from "@/lib/toast";
@@ -40,11 +41,18 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       // on the same process reads the previous user's cached rows.
       if (event === "SIGNED_OUT") {
         queryClient.clear();
+        // `clear()` only empties memory; the next account's boot pass would
+        // restore these rows from disk. Started now rather than after the boot
+        // pass: the pass reads every row up front, so deleting them mid-pass
+        // changes nothing it does, and the clear below empties whatever it
+        // writes to memory. It never rejects.
+        void wipeAppQueryCache();
         // A sign-out during the boot read-cache pass (a refresh token rejected
         // at launch) would be undone by the rest of the pass writing the old
         // account's rows back. Clearing again once it settles is safe:
         // RootNavigator renders nothing until then, so no new account's data
-        // can be in the cache yet. The pass never rejects.
+        // can be in the cache yet. The pass never rejects. Mid-session the
+        // pass settled long ago, so this finds nothing to clear.
         void queryCacheRestored.then(() => queryClient.clear());
         // Supabase emits this same event when a refresh token is rejected.
         // Unannounced, being bounced to sign-in mid-session reads as a crash or
