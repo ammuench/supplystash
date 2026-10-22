@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 
+import { useIsQueryCacheRestored } from "@/lib/query-cache-restore";
 import { useSession } from "@/state/session";
 
 // Auth routing as declarative guards, so the stack mounts on the
@@ -8,10 +9,13 @@ import { useSession } from "@/state/session";
 // Must render inside SessionProvider.
 export const RootNavigator = () => {
   const { session, isLoading } = useSession();
+  const isQueryCacheRestored = useIsQueryCacheRestored();
 
   // With no session read yet, the guards would mount sign-in and then swap to
-  // the tabs. SplashScreenController keeps the splash up over this null.
-  if (isLoading) {
+  // the tabs. Until the read cache is restored, a screen could fetch and then
+  // have its data overwritten by the restore pass. SplashScreenController
+  // keeps the splash up over this null.
+  if (isLoading || !isQueryCacheRestored) {
     return null;
   }
 
