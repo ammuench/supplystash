@@ -211,6 +211,48 @@ describe("# createMutationPersister", () => {
       expect(store.has(PAUSED_MUTATIONS_KEY)).toBe(true);
     });
 
+    it("drops what it read when a sign-out wipe lands mid-read", async () => {
+      // A refresh token rejected at launch: the wipe arrives while the boot
+      // restore is still reading. Returning the blob would hydrate and replay
+      // the old account's changes.
+      const { store, storage } = createStorage();
+      store.set(PAUSED_MUTATIONS_KEY, JSON.stringify(withMutation("milk")));
+      let releaseRead!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        releaseRead = resolve;
+      });
+      storage.getItem.mockImplementationOnce(async (key: string) => {
+        const raw = store.get(key) ?? null;
+        await gate;
+        return raw;
+      });
+      const persister = createMutationPersister(storage);
+
+      const restored = persister.restoreClient();
+      const removed = persister.removeClient();
+      releaseRead();
+
+      await expect(restored).resolves.toBeUndefined();
+      await removed;
+      expect(store.has(PAUSED_MUTATIONS_KEY)).toBe(false);
+      // The expired-session toast never sees these, so they are reported here.
+      expect(capture).toHaveBeenCalledWith("paused_mutations_dropped_on_sign_out", { count: 1 });
+    });
+
+    it("reads nothing when the wipe was called first, even if its delete is still queued", async () => {
+      const backing = createStorage();
+      const persister = createMutationPersister(backing.storage);
+      const release = holdNextWrite(backing);
+      const pending = persister.persistClient(withMutation("milk"));
+
+      const removed = persister.removeClient();
+      const restored = persister.restoreClient();
+      release();
+
+      await expect(restored).resolves.toBeUndefined();
+      await Promise.all([pending, removed]);
+    });
+
     it("does not rewrite the blob it just restored", async () => {
       const { storage } = createStorage();
       await createMutationPersister(storage).persistClient(withMutation("milk"));

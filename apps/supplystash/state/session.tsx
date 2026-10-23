@@ -5,12 +5,19 @@ import { AppState, Platform } from "react-native";
 
 import { consumeUserInitiatedSignOut } from "@/lib/auth";
 import { queryCacheRestored } from "@/lib/query-cache-restore";
-import { queryClient } from "@/lib/query-client";
+import { wipeAppQueryCache } from "@/lib/query-cache-wipe";
+import { countPausedMutations, queryClient } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
 import { toastInfo } from "@/lib/toast";
 
 // Exported so the test asserts on the same string the user reads.
 export const SESSION_EXPIRED_MESSAGE = "Your session expired — please sign in again.";
+
+// The involuntary path cannot ask first, so the loss is reported instead.
+export const sessionExpiredMessage = (discarded: number) =>
+  discarded === 0
+    ? SESSION_EXPIRED_MESSAGE
+    : `Your session expired, and ${discarded} unsynced change${discarded === 1 ? " was" : "s were"} discarded — please sign in again.`;
 
 type SessionContextValue = {
   session: Session | null;
@@ -39,19 +46,29 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       // nothing to the client cache — without this the next account to sign in
       // on the same process reads the previous user's cached rows.
       if (event === "SIGNED_OUT") {
+        // Read before the clear empties the mutation cache. A deliberate
+        // sign-out already confirmed this loss in the settings screen.
+        const discarded = countPausedMutations(queryClient);
         queryClient.clear();
+        // `clear()` only empties memory; the next account's boot pass would
+        // restore these rows from disk. Started now rather than after the boot
+        // pass: the pass reads every row up front, so deleting them mid-pass
+        // changes nothing it does, and the clear below empties whatever it
+        // writes to memory. It never rejects.
+        void wipeAppQueryCache();
         // A sign-out during the boot read-cache pass (a refresh token rejected
         // at launch) would be undone by the rest of the pass writing the old
         // account's rows back. Clearing again once it settles is safe:
         // RootNavigator renders nothing until then, so no new account's data
-        // can be in the cache yet. The pass never rejects.
+        // can be in the cache yet. The pass never rejects. Mid-session the
+        // pass settled long ago, so this finds nothing to clear.
         void queryCacheRestored.then(() => queryClient.clear());
         // Supabase emits this same event when a refresh token is rejected.
         // Unannounced, being bounced to sign-in mid-session reads as a crash or
         // a random logout. The deliberate path already toasts "Signed out", so
         // only the involuntary one is announced here.
         if (!consumeUserInitiatedSignOut()) {
-          toastInfo(SESSION_EXPIRED_MESSAGE);
+          toastInfo(sessionExpiredMessage(discarded));
         }
       }
       setSession(nextSession);
