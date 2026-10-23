@@ -1,5 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
+import { skipPersistAfterWipe } from "@/lib/query-cache-wipe";
 import { queryPersister } from "@/lib/query-persister";
 
 export const queryClient = new QueryClient({
@@ -14,7 +15,8 @@ export const queryClient = new QueryClient({
       gcTime: Infinity,
       retry: 2,
       // Native only; undefined on web. Only allowlisted roots reach disk.
-      persister: queryPersister?.persisterFn,
+      // Wrapped so a fetch in flight at sign-out cannot save after the wipe.
+      persister: queryPersister && skipPersistAfterWipe(queryPersister.persisterFn),
     },
     mutations: {
       // Membership and home management are online-only, so a failed mutation is

@@ -8,7 +8,7 @@ import { capture } from "@/lib/analytics";
 import { pausedMutationPersister } from "@/lib/paused-mutation-persister.native";
 import { restoreQueryCache } from "@/lib/query-cache-restore";
 import { queryCacheStorage } from "@/lib/query-cache-storage";
-import { wipeQueryCache } from "@/lib/query-cache-wipe";
+import { skipPersistAfterWipe, wipeQueryCache } from "@/lib/query-cache-wipe";
 import { PAUSED_MUTATIONS_KEY, QUERY_CACHE_BUSTER } from "@/lib/query-persister-config";
 import { queryPersister } from "@/lib/query-persister.native";
 import { queryKeys } from "@/state/query-keys";
@@ -116,5 +116,80 @@ describe("# wipeQueryCache", () => {
     await expect(wipeQueryCache(undefined, undefined)).resolves.toBeUndefined();
 
     expect(entries).not.toHaveBeenCalled();
+  });
+});
+
+describe("# skipPersistAfterWipe", () => {
+  const createPersistingClient = () =>
+    new QueryClient({
+      defaultOptions: {
+        queries: {
+          gcTime: Infinity,
+          retry: false,
+          persister: skipPersistAfterWipe(queryPersister.persisterFn),
+        },
+      },
+    });
+
+  // Holds `queryFn` open, so the test controls when the response lands.
+  const heldResponse = <T>() => {
+    let respond!: (data: T) => void;
+    const response = new Promise<T>((resolve) => {
+      respond = resolve;
+    });
+    return { response, respond };
+  };
+
+  // The persister saves on a scheduled tick after `queryFn` resolves.
+  const flushSave = () => new Promise((resolve) => setTimeout(resolve, 10));
+
+  beforeEach(() => {
+    cache().clear();
+  });
+
+  it("does not let a refetch in flight at sign-out write the old account's row back", async () => {
+    // staleTime 0 means refetches are common, and the network is far slower
+    // than the SQLite delete, so the response usually lands after the wipe.
+    const client = createPersistingClient();
+    const key = queryKeys.homes();
+    client.setQueryData(key, ["Account A's home"]);
+    const { response, respond } = heldResponse<string[]>();
+    const refetch = client.fetchQuery({ queryKey: key, queryFn: () => response });
+
+    client.clear();
+    await wipe();
+    respond(["Account A's home"]);
+    await refetch.catch(() => {});
+    await flushSave();
+
+    expect(cache().has(storageKey(key))).toBe(false);
+  });
+
+  it("still saves a fetch that no wipe interrupted", async () => {
+    // The control for the test above: the same refetch without a sign-out
+    // does reach disk, so the absence there is the guard's doing.
+    const client = createPersistingClient();
+    const key = queryKeys.homes();
+    client.setQueryData(key, ["Home"]);
+    const { response, respond } = heldResponse<string[]>();
+    const refetch = client.fetchQuery({ queryKey: key, queryFn: () => response });
+
+    respond(["Home"]);
+    await refetch;
+    await flushSave();
+
+    expect(cache().has(storageKey(key))).toBe(true);
+  });
+
+  it("saves fetches that start after a wipe", async () => {
+    // Only fetches that outlived a wipe are skipped, not every later one.
+    await wipe();
+    const client = createPersistingClient();
+    const key = queryKeys.homes();
+
+    await client.fetchQuery({ queryKey: key, queryFn: async () => ["Account B's home"] });
+    await flushSave();
+
+    expect(cache().has(storageKey(key))).toBe(true);
   });
 });

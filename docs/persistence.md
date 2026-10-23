@@ -48,7 +48,8 @@ blob (STASH-36). Both live in the `query-cache` database.
 | [`lib/query-cache-restore.ts`](../apps/supplystash/lib/query-cache-restore.ts)       | Boot `restoreQueries()` pass, started on import, and `useIsQueryCacheRestored()` for the splash and render gate.      |
 | [`lib/query-cache-wipe.ts`](../apps/supplystash/lib/query-cache-wipe.ts)             | Sign-out's disk wipe: every read-cache row plus the paused-mutation blob. See [Sign-out](#sign-out-built).            |
 
-`lib/query-client.ts` sets `defaultOptions.queries.persister` to `queryPersister?.persisterFn`.
+`lib/query-client.ts` sets `defaultOptions.queries.persister` to `queryPersister.persisterFn`,
+wrapped in `skipPersistAfterWipe` (see [Sign-out](#sign-out-built)).
 
 - **Allowlist:** `items`, `categories`, `shoppingList`, `homes` — see
   [query-keys.md](./query-keys.md) rule 6.
@@ -145,12 +146,12 @@ The global default stays `mutations.retry: 0`. Retry policy for offline mutation
 wipe the next account's boot pass restores the previous one's rows, and `["homes"]` is not
 user-scoped, so it would show them the old account's homes.
 
-| File                                                                                   | Role                                                                                                                       |
-| -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| [`state/session.tsx`](../apps/supplystash/state/session.tsx)                           | `SIGNED_OUT` handler: counts paused mutations, clears memory, starts the wipe, clears again after the boot pass, toasts.   |
-| [`lib/query-cache-wipe.ts`](../apps/supplystash/lib/query-cache-wipe.ts)               | `removeQueries()` (no filters) on the read persister + `removeClient()` on the shared mutation persister. Never rejects.   |
-| [`hooks/use-sign-out.ts`](../apps/supplystash/hooks/use-sign-out.ts)                   | The deliberate flow: count queued changes, ask, sign out, toast. Ref-guarded against double presses.                       |
-| [`components/sign-out-button.tsx`](../apps/supplystash/components/sign-out-button.tsx) | Button + confirm dialog on that hook. Any screen that offers sign-out renders this, so the flow is not tied to one screen. |
+| File                                                                                   | Role                                                                                                                                                  |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`state/session.tsx`](../apps/supplystash/state/session.tsx)                           | `SIGNED_OUT` handler: counts paused mutations, clears memory, starts the wipe, clears again after the boot pass, toasts.                              |
+| [`lib/query-cache-wipe.ts`](../apps/supplystash/lib/query-cache-wipe.ts)               | `removeQueries()` (no filters) on the read persister + `removeClient()` on the shared mutation persister. Never rejects. Also `skipPersistAfterWipe`. |
+| [`hooks/use-sign-out.ts`](../apps/supplystash/hooks/use-sign-out.ts)                   | The deliberate flow: count queued changes, ask, sign out, toast. Ref-guarded against double presses.                                                  |
+| [`components/sign-out-button.tsx`](../apps/supplystash/components/sign-out-button.tsx) | Button + confirm dialog on that hook. Any screen that offers sign-out renders this, so the flow is not tied to one screen.                            |
 
 - **One handler for every sign-out.** Supabase emits `SIGNED_OUT` for the button, a remote
   sign-out and a rejected refresh token alike, so all teardown lives in `state/session.tsx`, not
@@ -176,9 +177,16 @@ user-scoped, so it would show them the old account's homes.
     sees those.
 - **A failed wipe is reported, not thrown:** `query_cache_wipe_failed`. Each half runs regardless
   of the other.
+- **A fetch in flight at sign-out cannot write its row back.** `clear()` cancels each query, but
+  cancelling only stops TanStack from using the result: `persisterFn` is still awaiting `queryFn`,
+  and saves `query.state` (the old account's last data) once the response lands. With
+  `staleTime: 0` a refetch is often in flight, and the network is far slower than the SQLite
+  delete, so without a guard that write usually lands after the wipe. `skipPersistAfterWipe`
+  notes a wipe counter when a fetch starts and throws `FetchOutlivedWipeError` from the wrapped
+  `queryFn` if a wipe happened since, which stops `persisterFn` before the save. The query was
+  already cancelled, so nothing sees the error.
 - **Known gaps.**
-  - A fetch already in flight at sign-out still persists its row when it resolves (`persisterFn`
-    writes after `queryFn`, even for a query `clear()` removed). The fix is a stored owner user id
-    checked at boot and `SIGNED_IN`.
+  - The app killed between sign-out and the wipe finishing leaves rows on disk, and the next
+    launch restores them. A stored owner user id, checked at boot and `SIGNED_IN`, would cover it.
   - Lazy restore could read a row if the next account signs in before the wipe finishes. The wipe
     is local SQLite and sign-in is a network round trip, so this is accepted.
