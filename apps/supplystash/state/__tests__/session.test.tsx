@@ -4,6 +4,7 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 
 import { consumeUserInitiatedSignOut } from "@/lib/auth";
 import { wipeAppQueryCache } from "@/lib/query-cache-wipe";
+import { openQueryCacheWrites } from "@/lib/query-cache-write-gate";
 import { countPausedMutations, queryClient } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
 import { toastInfo } from "@/lib/toast";
@@ -43,6 +44,10 @@ jest.mock("@/lib/query-cache-wipe", () => ({
   wipeAppQueryCache: jest.fn(),
 }));
 
+jest.mock("@/lib/query-cache-write-gate", () => ({
+  openQueryCacheWrites: jest.fn(),
+}));
+
 jest.mock("@/lib/auth", () => ({
   consumeUserInitiatedSignOut: jest.fn(),
 }));
@@ -55,6 +60,7 @@ const auth = supabase.auth as jest.Mocked<typeof supabase.auth>;
 const clearCache = queryClient.clear as jest.Mock;
 const wipeDisk = wipeAppQueryCache as jest.Mock;
 const countQueued = countPausedMutations as jest.Mock;
+const openWrites = openQueryCacheWrites as jest.Mock;
 const consumeSignOutIntent = consumeUserInitiatedSignOut as jest.Mock;
 const showInfoToast = toastInfo as jest.Mock;
 
@@ -266,6 +272,18 @@ describe("# SessionProvider", () => {
     expect(result.current.session).toBe(SESSION);
     expect(clearCache).not.toHaveBeenCalled();
     expect(wipeDisk).not.toHaveBeenCalled();
+  });
+
+  it("opens the read cache to writes on sign-in, which the last sign-out wipe closed", async () => {
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => emit("SIGNED_OUT", null));
+    expect(openWrites).not.toHaveBeenCalled();
+
+    act(() => emit("SIGNED_IN", SESSION));
+
+    expect(openWrites).toHaveBeenCalledTimes(1);
   });
 
   it("throws when used outside the provider, rather than reporting a signed-out user", () => {

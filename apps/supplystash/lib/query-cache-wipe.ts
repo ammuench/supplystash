@@ -5,6 +5,7 @@ import type {
 
 import { capture } from "@/lib/analytics";
 import { pausedMutationPersister } from "@/lib/paused-mutation-persister";
+import { closeQueryCacheWrites } from "@/lib/query-cache-write-gate";
 import { queryPersister } from "@/lib/query-persister";
 
 type QueryPersister = ReturnType<typeof experimental_createQueryPersister>;
@@ -26,6 +27,9 @@ export const wipeQueryCache = async (
   mutationPersister: Persister | undefined,
 ) => {
   wipes += 1;
+  // Before the delete is queued, so a save TanStack schedules from here on is
+  // dropped rather than landing after it. The next sign-in opens it again.
+  closeQueryCacheWrites();
 
   // Settled independently: one half failing must not leave the other on disk.
   const results = await Promise.allSettled([

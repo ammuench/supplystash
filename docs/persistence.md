@@ -150,6 +150,7 @@ user-scoped, so it would show them the old account's homes.
 | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`state/session.tsx`](../apps/supplystash/state/session.tsx)                           | `SIGNED_OUT` handler: counts paused mutations, clears memory, starts the wipe, clears again after the boot pass, toasts.                              |
 | [`lib/query-cache-wipe.ts`](../apps/supplystash/lib/query-cache-wipe.ts)               | `removeQueries()` (no filters) on the read persister + `removeClient()` on the shared mutation persister. Never rejects. Also `skipPersistAfterWipe`. |
+| [`lib/query-cache-write-gate.ts`](../apps/supplystash/lib/query-cache-write-gate.ts)   | Read-cache storage wrapper: runs calls one at a time, drops writes from the wipe until the next `SIGNED_IN`.                                          |
 | [`hooks/use-sign-out.ts`](../apps/supplystash/hooks/use-sign-out.ts)                   | The deliberate flow: count queued changes, ask, sign out, toast. Ref-guarded against double presses.                                                  |
 | [`components/sign-out-button.tsx`](../apps/supplystash/components/sign-out-button.tsx) | Button + confirm dialog on that hook. Any screen that offers sign-out renders this, so the flow is not tied to one screen.                            |
 
@@ -185,6 +186,14 @@ user-scoped, so it would show them the old account's homes.
   notes a wipe counter when a fetch starts and throws `FetchOutlivedWipeError` from the wrapped
   `queryFn` if a wipe happened since, which stops `persisterFn` before the save. The query was
   already cancelled, so nothing sees the error.
+- **A save scheduled before sign-out cannot land after the wipe.** TanStack saves a row on a
+  later tick than the response, so a response that landed just before sign-out passes the check
+  above and its save runs after the wipe has listed the rows. The read persister's storage goes
+  through `gateQueryCacheWrites`: the wipe closes it and `SIGNED_IN` opens it, and while it is
+  closed every write is dropped (no query runs while signed out). Every storage call also runs one
+  at a time, so a save already started finishes before `removeQueries` lists the rows. The
+  counter above still matters for a fetch that outlives the next sign-in, when the gate is open
+  again.
 - **Known gaps.**
   - The app killed between sign-out and the wipe finishing leaves rows on disk, and the next
     launch restores them. A stored owner user id, checked at boot and `SIGNED_IN`, would cover it.

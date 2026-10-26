@@ -6,6 +6,7 @@ import { AppState, Platform } from "react-native";
 import { consumeUserInitiatedSignOut } from "@/lib/auth";
 import { queryCacheRestored } from "@/lib/query-cache-restore";
 import { wipeAppQueryCache } from "@/lib/query-cache-wipe";
+import { openQueryCacheWrites } from "@/lib/query-cache-write-gate";
 import { countPausedMutations, queryClient } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
 import { toastInfo } from "@/lib/toast";
@@ -41,6 +42,11 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
 
     const { data: subscription } = supabase.auth.onAuthStateChange((event, nextSession) => {
       settled = true;
+      // The sign-out wipe closed the read cache to writes. This account's
+      // queries may save again.
+      if (event === "SIGNED_IN") {
+        openQueryCacheWrites();
+      }
       // Tear down here, not in the sign-out button, so token-expiry and remote
       // sign-outs get the same treatment. RLS filters server rows but does
       // nothing to the client cache — without this the next account to sign in

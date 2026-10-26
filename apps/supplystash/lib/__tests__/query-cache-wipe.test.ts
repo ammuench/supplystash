@@ -9,6 +9,7 @@ import { pausedMutationPersister } from "@/lib/paused-mutation-persister.native"
 import { restoreQueryCache } from "@/lib/query-cache-restore";
 import { queryCacheStorage } from "@/lib/query-cache-storage";
 import { skipPersistAfterWipe, wipeQueryCache } from "@/lib/query-cache-wipe";
+import { openQueryCacheWrites } from "@/lib/query-cache-write-gate";
 import { PAUSED_MUTATIONS_KEY, QUERY_CACHE_BUSTER } from "@/lib/query-persister-config";
 import { queryPersister } from "@/lib/query-persister.native";
 import { queryKeys } from "@/state/query-keys";
@@ -47,6 +48,11 @@ const queuedBlob = (): PersistedClient => ({
 });
 
 const wipe = () => wipeQueryCache(queryPersister, pausedMutationPersister);
+
+// Each wipe closes the read cache to writes until the next sign-in.
+beforeEach(() => {
+  openQueryCacheWrites();
+});
 
 describe("# wipeQueryCache", () => {
   beforeEach(() => {
@@ -165,6 +171,20 @@ describe("# skipPersistAfterWipe", () => {
     expect(cache().has(storageKey(key))).toBe(false);
   });
 
+  it("does not let a save scheduled before sign-out land after the wipe", async () => {
+    // The response landed before sign-out, so the check above passed, but
+    // TanStack saves on a later tick. The wipe has listed the rows by then.
+    const client = createPersistingClient();
+    const key = queryKeys.homes();
+
+    await client.fetchQuery({ queryKey: key, queryFn: async () => ["Account A's home"] });
+    client.clear();
+    await wipe();
+    await flushSave();
+
+    expect(cache().has(storageKey(key))).toBe(false);
+  });
+
   it("still saves a fetch that no wipe interrupted", async () => {
     // The control for the test above: the same refetch without a sign-out
     // does reach disk, so the absence there is the guard's doing.
@@ -184,6 +204,8 @@ describe("# skipPersistAfterWipe", () => {
   it("saves fetches that start after a wipe", async () => {
     // Only fetches that outlived a wipe are skipped, not every later one.
     await wipe();
+    // As the next account's SIGNED_IN does.
+    openQueryCacheWrites();
     const client = createPersistingClient();
     const key = queryKeys.homes();
 
