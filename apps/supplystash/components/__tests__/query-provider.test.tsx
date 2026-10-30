@@ -1,13 +1,16 @@
 import type { PersistedClient } from "@tanstack/query-persist-client-core";
+import type { NetworkState } from "expo-network";
 
 import { PostgrestError } from "@supabase/supabase-js";
 import { onlineManager, QueryClient, useIsRestoring } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react-native";
+import { addNetworkStateListener, getNetworkStateAsync } from "expo-network";
 import { Text } from "react-native";
 
 // Imported by its platform name: tsc resolves the bare path to the web file,
 // which has no persister. Jest runs as iOS either way.
 import { QueryProvider } from "@/components/query-provider.native";
+import { wireConnectivity } from "@/lib/connectivity";
 import { postgrestErrorCode } from "@/lib/postgrest-error";
 import { PAUSED_MUTATIONS_KEY, QUERY_CACHE_BUSTER } from "@/lib/query-persister-config";
 
@@ -163,6 +166,38 @@ describe("# QueryProvider (native)", () => {
       await restored();
       expect(mutationFn).not.toHaveBeenCalled();
       expect(savedClient()?.clientState.mutations).toHaveLength(1);
+    });
+
+    it("holds the replay until the first network reading on an offline launch", async () => {
+      await queueOfflineThenQuit("item-1");
+
+      // Cold start: TanStack assumes online until expo-network's first reading
+      // lands, and the restore can finish before it does.
+      onlineManager.setOnline(true);
+      let resolveRead!: (state: NetworkState) => void;
+      jest.mocked(getNetworkStateAsync).mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveRead = resolve;
+        }),
+      );
+      wireConnectivity();
+
+      const mutationFn = jest.fn(async () => ({}));
+      const { restored } = launch({ mutationFn });
+
+      await restored();
+      expect(mutationFn).not.toHaveBeenCalled();
+
+      resolveRead({ isConnected: false } as NetworkState);
+      await waitFor(() => expect(onlineManager.isOnline()).toBe(false));
+      expect(mutationFn).not.toHaveBeenCalled();
+      expect(savedClient()?.clientState.mutations).toHaveLength(1);
+
+      // Reconnecting replays it as usual.
+      jest.mocked(addNetworkStateListener).mock.lastCall![0]({
+        isConnected: true,
+      } as NetworkState);
+      await waitFor(() => expect(mutationFn).toHaveBeenCalledTimes(1));
     });
 
     it("drops a queue saved under a different buster without replaying it", async () => {

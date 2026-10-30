@@ -20,6 +20,19 @@ jest.mock(
   () => require("@react-native-async-storage/async-storage/jest/async-storage-mock") as unknown,
 );
 
+// expo-network is a native module and ships no jest mock. lib/connectivity.ts
+// wires it into TanStack's onlineManager. The default reports a connected
+// device; a suite takes the listener from `addNetworkStateListener.mock.calls`
+// to fire changes.
+jest.mock("expo-network", () => ({
+  getNetworkStateAsync: jest.fn(async () => ({
+    type: "WIFI",
+    isConnected: true,
+    isInternetReachable: true,
+  })),
+  addNetworkStateListener: jest.fn(() => ({ remove: jest.fn() })),
+}));
+
 // lib/env.ts throws when the config is missing, which is the behaviour we want
 // at runtime but would fail every suite that transitively imports it. Supply
 // the same shape app.config.ts builds from the environment.

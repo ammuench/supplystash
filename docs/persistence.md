@@ -115,9 +115,11 @@ wrapped in `skipPersistAfterWipe` (see [Sign-out](#sign-out-built)).
   idempotent. Tracked in STASH-44.
 - **`useIsRestoring()` is true while this blob restores.** It does not cover the read cache;
   `useIsQueryCacheRestored()` does. The splash waits on both.
-- **Replay needs connectivity wiring.** On RN, `onlineManager` never goes offline until STASH-39
-  backs it with NetInfo, so nothing pauses in the app yet. The round trip is covered by
-  `components/__tests__/query-provider.test.tsx` instead.
+- **Pause and replay follow the device's network.** `expo-network` backs `onlineManager` on
+  native (STASH-39), so a write made offline pauses and replays on reconnect. The replay after a
+  restore waits for the first real network reading (`whenOnlineStateKnown()`). See
+  [connectivity.md](./connectivity.md). The persist-and-restore round trip is covered by
+  `components/__tests__/query-provider.test.tsx`.
 
 #### Writing an offline-capable mutation
 
