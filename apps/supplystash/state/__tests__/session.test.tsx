@@ -3,10 +3,17 @@ import type { Session, User } from "@supabase/supabase-js";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 
 import { consumeUserInitiatedSignOut } from "@/lib/auth";
-import { queryClient } from "@/lib/query-client";
+import { wipeAppQueryCache } from "@/lib/query-cache-wipe";
+import { openQueryCacheWrites } from "@/lib/query-cache-write-gate";
+import { countPausedMutations, queryClient } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
 import { toastInfo } from "@/lib/toast";
-import { SESSION_EXPIRED_MESSAGE, SessionProvider, useSession } from "@/state/session";
+import {
+  SESSION_EXPIRED_MESSAGE,
+  SessionProvider,
+  sessionExpiredMessage,
+  useSession,
+} from "@/state/session";
 
 jest.mock("@/lib/supabase", () => ({
   supabase: {
@@ -20,6 +27,7 @@ jest.mock("@/lib/supabase", () => ({
 }));
 
 jest.mock("@/lib/query-client", () => ({
+  countPausedMutations: jest.fn(),
   queryClient: { clear: jest.fn() },
 }));
 
@@ -32,6 +40,14 @@ jest.mock("@/lib/query-cache-restore", () => ({
   },
 }));
 
+jest.mock("@/lib/query-cache-wipe", () => ({
+  wipeAppQueryCache: jest.fn(),
+}));
+
+jest.mock("@/lib/query-cache-write-gate", () => ({
+  openQueryCacheWrites: jest.fn(),
+}));
+
 jest.mock("@/lib/auth", () => ({
   consumeUserInitiatedSignOut: jest.fn(),
 }));
@@ -42,6 +58,9 @@ jest.mock("@/lib/toast", () => ({
 
 const auth = supabase.auth as jest.Mocked<typeof supabase.auth>;
 const clearCache = queryClient.clear as jest.Mock;
+const wipeDisk = wipeAppQueryCache as jest.Mock;
+const countQueued = countPausedMutations as jest.Mock;
+const openWrites = openQueryCacheWrites as jest.Mock;
 const consumeSignOutIntent = consumeUserInitiatedSignOut as jest.Mock;
 const showInfoToast = toastInfo as jest.Mock;
 
@@ -60,6 +79,7 @@ beforeEach(() => {
   }) as never);
   auth.getSession.mockResolvedValue({ data: { session: null } } as never);
   consumeSignOutIntent.mockReturnValue(false);
+  countQueued.mockReturnValue(0);
   mockBootPass.promise = new Promise<void>((resolve) => {
     mockBootPass.settle = resolve;
   });
@@ -164,6 +184,21 @@ describe("# SessionProvider", () => {
     expect(clearCache).toHaveBeenCalledTimes(2);
   });
 
+  it("wipes the disk cache on sign-out without waiting for the boot pass", async () => {
+    // The pass is held open here: the next account's boot pass would restore
+    // whatever is still on disk, so the wipe should not sit behind this one.
+    auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.session).toBe(SESSION));
+
+    act(() => emit("SIGNED_OUT", null));
+    expect(wipeDisk).toHaveBeenCalledTimes(1);
+
+    await act(async () => mockBootPass.settle());
+
+    expect(wipeDisk).toHaveBeenCalledTimes(1);
+  });
+
   it("announces an involuntary sign-out, so an expired token does not read as a crash", async () => {
     auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
     const { result } = renderSession();
@@ -173,6 +208,30 @@ describe("# SessionProvider", () => {
 
     expect(showInfoToast).toHaveBeenCalledWith(SESSION_EXPIRED_MESSAGE);
     expect(clearCache).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports queued changes an involuntary sign-out discarded, counted before the clear", async () => {
+    // Nobody was asked first, so the loss must not be silent.
+    countQueued.mockImplementation(() => (clearCache.mock.calls.length === 0 ? 2 : 0));
+    auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.session).toBe(SESSION));
+
+    act(() => emit("SIGNED_OUT", null));
+
+    expect(showInfoToast).toHaveBeenCalledWith(sessionExpiredMessage(2));
+  });
+
+  it("does not report queued changes on a user-initiated sign-out, which confirmed the loss already", async () => {
+    consumeSignOutIntent.mockReturnValue(true);
+    countQueued.mockReturnValue(2);
+    auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.session).toBe(SESSION));
+
+    act(() => emit("SIGNED_OUT", null));
+
+    expect(showInfoToast).not.toHaveBeenCalled();
   });
 
   it("stays quiet on a user-initiated sign-out, which already toasts its own message", async () => {
@@ -203,17 +262,49 @@ describe("# SessionProvider", () => {
     expect(showInfoToast).toHaveBeenCalledWith(SESSION_EXPIRED_MESSAGE);
   });
 
-  it("leaves the query cache alone on sign-in", async () => {
+  it("leaves the query cache and disk alone on sign-in", async () => {
     const { result } = renderSession();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     act(() => emit("SIGNED_IN", SESSION));
+    await act(async () => mockBootPass.settle());
 
     expect(result.current.session).toBe(SESSION);
     expect(clearCache).not.toHaveBeenCalled();
+    expect(wipeDisk).not.toHaveBeenCalled();
+  });
+
+  it("opens the read cache to writes on sign-in, which the last sign-out wipe closed", async () => {
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => emit("SIGNED_OUT", null));
+    expect(openWrites).not.toHaveBeenCalled();
+
+    act(() => emit("SIGNED_IN", SESSION));
+
+    expect(openWrites).toHaveBeenCalledTimes(1);
   });
 
   it("throws when used outside the provider, rather than reporting a signed-out user", () => {
     expect(() => renderHook(() => useSession())).toThrow(/SessionProvider/);
+  });
+});
+
+describe("# sessionExpiredMessage", () => {
+  it("is the plain expiry notice when nothing was discarded", () => {
+    expect(sessionExpiredMessage(0)).toBe(SESSION_EXPIRED_MESSAGE);
+  });
+
+  it("names a single discarded change", () => {
+    expect(sessionExpiredMessage(1)).toBe(
+      "Your session expired, and 1 unsynced change was discarded — please sign in again.",
+    );
+  });
+
+  it("names several discarded changes", () => {
+    expect(sessionExpiredMessage(3)).toBe(
+      "Your session expired, and 3 unsynced changes were discarded — please sign in again.",
+    );
   });
 });

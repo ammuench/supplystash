@@ -23,14 +23,46 @@ export const createMutationPersister = (storage: AsyncStorage<string>): Persiste
   // write runs only after the one before it lands, and compares against
   // `lastWritten` only then. Otherwise empty -> paused -> empty skips the final
   // save as matching the first, and the pending paused write lands last.
-  let queue: Promise<void> = Promise.resolve();
-  const serialize = (task: () => Promise<void>) => {
+  let queue: Promise<unknown> = Promise.resolve();
+  const serialize = <T>(task: () => Promise<T>) => {
     const run = queue.then(task);
     // A rejected task still rejects for its own caller, but must not block
     // the writes queued after it.
     queue = run.catch(() => {});
     return run;
   };
+
+  const readClient = async () => {
+    try {
+      const raw = await storage.getItem(PAUSED_MUTATIONS_KEY);
+      if (!raw) {
+        // The disk may have been cleared behind this persister's back.
+        // Forgetting the last write keeps the next save from being skipped
+        // as already on disk.
+        lastWritten = undefined;
+        return undefined;
+      }
+
+      const client = JSON.parse(raw) as PersistedClient;
+      // Without this the first cache event after restore rewrites the blob
+      // that was just read.
+      lastWritten = fingerprint(client);
+
+      return client;
+    } catch (error) {
+      // TanStack discards the blob on a failed restore and only logs in dev,
+      // so a queued check-off would vanish unseen. Rethrown so the discard
+      // still happens: a blob that cannot be read cannot be resumed.
+      capture("paused_mutation_restore_failed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  };
+
+  // Bumped by every `removeClient` call. A restore that was already reading
+  // when a sign-out wiped the blob compares against it and drops what it read.
+  let removals = 0;
 
   return {
     persistClient: (client) =>
@@ -55,39 +87,42 @@ export const createMutationPersister = (storage: AsyncStorage<string>): Persiste
           });
         }
       }),
-    restoreClient: async () => {
-      try {
-        const raw = await storage.getItem(PAUSED_MUTATIONS_KEY);
-        if (!raw) {
-          // The disk may have been cleared behind this persister's back.
-          // Forgetting the last write keeps the next save from being skipped
-          // as already on disk.
-          lastWritten = undefined;
-          return undefined;
+    // Queued, and checked against `removals`, so a sign-out wipe during the
+    // boot restore cannot be undone by it. TanStack hydrates and replays
+    // whatever this returns, and its next save writes it back to disk, so a
+    // blob read just before the wipe would bring the old account's changes
+    // back. Dropped rather than replayed: a sign-out discards queued
+    // changes.
+    restoreClient: () => {
+      const removalsAtStart = removals;
+
+      return serialize(async () => {
+        const restored = await readClient();
+        if (removals === removalsAtStart) {
+          return restored;
         }
 
-        const client = JSON.parse(raw) as PersistedClient;
-        // Without this the first cache event after restore rewrites the blob
-        // that was just read.
-        lastWritten = fingerprint(client);
+        // Never reached memory, so the expired-session toast in
+        // state/session.tsx cannot count them. Reported here instead.
+        const dropped = restored?.clientState.mutations.length ?? 0;
+        if (dropped > 0) {
+          capture("paused_mutations_dropped_on_sign_out", { count: dropped });
+        }
 
-        return client;
-      } catch (error) {
-        // TanStack discards the blob on a failed restore and only logs in dev,
-        // so a queued check-off would vanish unseen. Rethrown so the discard
-        // still happens: a blob that cannot be read cannot be resumed.
-        capture("paused_mutation_restore_failed", {
-          message: error instanceof Error ? error.message : String(error),
-        });
-        throw error;
-      }
+        return undefined;
+      });
     },
     // Queued too, so a write still pending cannot land after the delete and
     // put the blob back.
-    removeClient: () =>
-      serialize(async () => {
+    removeClient: () => {
+      // Counted on the call, not when the queued delete runs, so a restore
+      // already reading sees it.
+      removals += 1;
+
+      return serialize(async () => {
         lastWritten = undefined;
         await storage.removeItem(PAUSED_MUTATIONS_KEY);
-      }),
+      });
+    },
   };
 };
