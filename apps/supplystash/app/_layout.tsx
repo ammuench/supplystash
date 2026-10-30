@@ -15,6 +15,7 @@ import { QueryProvider } from "@/components/query-provider";
 import { RootNavigator } from "@/components/root-navigator";
 import { SplashScreenController } from "@/components/splash-screen-controller";
 import { posthog } from "@/lib/analytics";
+import { wireConnectivity } from "@/lib/connectivity";
 import { queryClient } from "@/lib/query-client";
 import { useNavTheme } from "@/lib/theme";
 import { SessionProvider } from "@/state/session";
@@ -27,6 +28,11 @@ export {
 // Otherwise expo-router hides the splash on first render, before the saved theme
 // and session are loaded. SplashScreenController decides when it hides.
 void SplashScreen.preventAutoHideAsync();
+
+// Before the first render, so the online state is real by the time
+// QueryProvider restores the paused queue and resumes it. Resuming while
+// wrongly "online" would send a queued write into a dead connection.
+wireConnectivity();
 
 // `react-native-gesture-handler` is third-party, so it needs `withUniwind` to accept
 // `className`. It has to be the outermost view and has to fill the screen — gorhom's
