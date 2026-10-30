@@ -1,9 +1,10 @@
 import type { NetworkState } from "expo-network";
+import type { AppStateStatus } from "react-native";
 
-import { onlineManager, QueryClient, QueryObserver } from "@tanstack/react-query";
+import { focusManager, onlineManager, QueryClient, QueryObserver } from "@tanstack/react-query";
 import { waitFor } from "@testing-library/react-native";
 import { addNetworkStateListener, getNetworkStateAsync } from "expo-network";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 
 import { wireConnectivity } from "@/lib/connectivity";
 
@@ -16,6 +17,12 @@ const DISCONNECTED = { type: "NONE", isConnected: false } as NetworkState;
 
 // What the OS reports next, through the listener the last wiring registered.
 const emit = (state: NetworkState) => addListener.mock.lastCall![0](state);
+
+// Replaced per test so no real AppState listener is registered.
+let appStateListen: jest.SpiedFunction<typeof AppState.addEventListener>;
+
+// The app moving to the foreground or background.
+const changeAppState = (status: AppStateStatus) => appStateListen.mock.lastCall![1](status);
 
 // An initial read the test resolves by hand, to order it against an event.
 const holdInitialRead = () => {
@@ -45,11 +52,14 @@ const createClient = () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  appStateListen = jest.spyOn(AppState, "addEventListener").mockReturnValue({ remove: jest.fn() });
 });
 
 afterEach(() => {
   jest.restoreAllMocks();
   onlineManager.setOnline(true);
+  // Back to TanStack's default: focused unless the document is hidden.
+  focusManager.setFocused(undefined);
 });
 
 describe("# wireConnectivity", () => {
@@ -106,6 +116,27 @@ describe("# wireConnectivity", () => {
     });
   });
 
+  describe("## focus state (native)", () => {
+    it("loses focus in the background and regains it in the foreground", () => {
+      wireConnectivity();
+
+      changeAppState("background");
+      expect(focusManager.isFocused()).toBe(false);
+
+      changeAppState("active");
+      expect(focusManager.isFocused()).toBe(true);
+    });
+
+    it("loses focus while iOS overlays the app", () => {
+      // Control Center, the app switcher, an incoming call.
+      wireConnectivity();
+
+      changeAppState("inactive");
+
+      expect(focusManager.isFocused()).toBe(false);
+    });
+  });
+
   describe("## TanStack behaviour it enables", () => {
     it("pauses a mutation while offline and runs it on reconnect", async () => {
       wireConnectivity();
@@ -144,16 +175,35 @@ describe("# wireConnectivity", () => {
       unsubscribe();
       client.unmount();
     });
+
+    it("refetches a watched query when the app returns to the foreground", async () => {
+      wireConnectivity();
+      const client = createClient();
+      const queryFn = jest.fn(async () => "rows");
+      const observer = new QueryObserver(client, { queryKey: ["fixture"], queryFn });
+      const unsubscribe = observer.subscribe(() => {});
+
+      await waitFor(() => expect(queryFn).toHaveBeenCalledTimes(1));
+
+      changeAppState("background");
+      changeAppState("active");
+
+      await waitFor(() => expect(queryFn).toHaveBeenCalledTimes(2));
+
+      unsubscribe();
+      client.unmount();
+    });
   });
 
   describe("## web", () => {
-    it("leaves TanStack's own online events in place", () => {
+    it("leaves TanStack's own online and focus events in place", () => {
       jest.replaceProperty(Platform, "OS", "web");
 
       wireConnectivity();
 
       expect(addListener).not.toHaveBeenCalled();
       expect(readState).not.toHaveBeenCalled();
+      expect(appStateListen).not.toHaveBeenCalled();
     });
   });
 });
