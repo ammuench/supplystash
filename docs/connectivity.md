@@ -17,8 +17,14 @@ Origin: `supply-stash-architecture.md` §5.3, §5.6, §5.8. Built in STASH-39.
 
 Wired by `wireConnectivity()` in
 [`apps/supplystash/lib/connectivity.ts`](../apps/supplystash/lib/connectivity.ts), called at
-module scope in `app/_layout.tsx`. It must run before the first render, so the online state is
-real by the time `QueryProvider` restores the paused-mutation queue and resumes it.
+module scope in `app/_layout.tsx`, so the first network reading is already on its way before the
+first render.
+
+Until that reading lands, `onlineManager` reports TanStack's default of online, which is a guess.
+`whenOnlineStateKnown()` settles once the real state is in (first event, initial read, or a failed
+read). The native `QueryProvider` waits on it before replaying the restored paused-mutation queue.
+Otherwise an offline launch would fire the queue into a dead connection, and each write would
+leave disk while it retried.
 
 ## Rules
 

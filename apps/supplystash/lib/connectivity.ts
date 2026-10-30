@@ -9,6 +9,18 @@ import { AppState, Platform } from "react-native";
 // real reading arrives.
 const isOnline = (state: NetworkState) => state.isConnected !== false;
 
+// Already settled until `wireConnectivity` replaces it, so web and suites that
+// never wire anything are not held.
+let onlineStateKnown = Promise.resolve();
+
+/** Settles once `wireConnectivity` has the device's real online state: the
+ * first network event or the initial read, whichever lands first (a failed
+ * read counts too). Until then `onlineManager` reports TanStack's default of
+ * online, which is a guess. Anything that must not act on that guess, like
+ * resuming the restored paused queue, waits on this. Never rejects.
+ */
+export const whenOnlineStateKnown = () => onlineStateKnown;
+
 /** Backs TanStack's online and focus state on native, where the default
  * `window` online/offline and `visibilitychange` events do not exist. Without
  * it nothing ever pauses (offline mutations fail instead of queueing), and
@@ -17,8 +29,15 @@ const isOnline = (state: NetworkState) => state.isConnected !== false;
  */
 export const wireConnectivity = () => {
   if (Platform.OS === "web") {
+    // The browser's own state is read synchronously, so it is never a guess.
+    onlineStateKnown = Promise.resolve();
     return;
   }
+
+  let markKnown!: () => void;
+  onlineStateKnown = new Promise((resolve) => {
+    markKnown = resolve;
+  });
 
   onlineManager.setEventListener((setOnline) => {
     // The listener only fires on a change, so the state is also read once, or
@@ -29,6 +48,7 @@ export const wireConnectivity = () => {
     const subscription = addNetworkStateListener((state) => {
       settled = true;
       setOnline(isOnline(state));
+      markKnown();
     });
 
     getNetworkStateAsync()
@@ -38,7 +58,8 @@ export const wireConnectivity = () => {
         }
       })
       // Stays at the last known state; the listener still reports changes.
-      .catch(() => {});
+      .catch(() => {})
+      .finally(markKnown);
 
     return () => {
       // A read still in flight must not write over the next listener's state.

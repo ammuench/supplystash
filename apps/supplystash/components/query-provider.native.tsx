@@ -4,6 +4,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { persistQueryClientSave } from "@tanstack/query-persist-client-core";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 
+import { whenOnlineStateKnown } from "@/lib/connectivity";
 import { pausedMutationPersister } from "@/lib/paused-mutation-persister.native";
 import { QUERY_CACHE_BUSTER } from "@/lib/query-persister-config";
 
@@ -49,12 +50,18 @@ export const QueryProvider = ({
       // this saves on every mutation event until the replays settle, then once
       // more, since those events are delivered on a later tick and can arrive
       // after the unsubscribe. Duplicate saves are skipped by the persister.
+      //
+      // The replay waits for the first real network reading. Until then
+      // TanStack assumes online, and on an offline launch the queue would
+      // fire into a dead connection and leave disk while it retries.
       const save = () => void persistQueryClientSave({ ...persistOptions, queryClient: client });
       const unsubscribe = client.getMutationCache().subscribe(save);
-      void client.resumePausedMutations().finally(() => {
-        unsubscribe();
-        save();
-      });
+      void whenOnlineStateKnown()
+        .then(() => client.resumePausedMutations())
+        .finally(() => {
+          unsubscribe();
+          save();
+        });
     }}
   >
     {children}

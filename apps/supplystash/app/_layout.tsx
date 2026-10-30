@@ -29,9 +29,9 @@ export {
 // and session are loaded. SplashScreenController decides when it hides.
 void SplashScreen.preventAutoHideAsync();
 
-// Before the first render, so the online state is real by the time
-// QueryProvider restores the paused queue and resumes it. Resuming while
-// wrongly "online" would send a queued write into a dead connection.
+// Before the first render, so the first network reading is already on its way
+// when QueryProvider starts restoring the paused queue. The provider still
+// waits for that reading before it replays the queue.
 wireConnectivity();
 
 // `react-native-gesture-handler` is third-party, so it needs `withUniwind` to accept

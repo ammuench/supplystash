@@ -6,7 +6,7 @@ import { waitFor } from "@testing-library/react-native";
 import { addNetworkStateListener, getNetworkStateAsync } from "expo-network";
 import { AppState, Platform } from "react-native";
 
-import { wireConnectivity } from "@/lib/connectivity";
+import { whenOnlineStateKnown, wireConnectivity } from "@/lib/connectivity";
 
 // Mocked in utils/testing/setupTests.ts.
 const addListener = jest.mocked(addNetworkStateListener);
@@ -34,6 +34,17 @@ const holdInitialRead = () => {
   );
 
   return (state: NetworkState) => resolve(state);
+};
+
+// Whether `whenOnlineStateKnown()` has settled, after pending callbacks run.
+const isKnown = async () => {
+  let known = false;
+  void whenOnlineStateKnown().then(() => {
+    known = true;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  return known;
 };
 
 // `gcTime: Infinity` so no 5-minute gc timer outlives the test run.
@@ -113,6 +124,36 @@ describe("# wireConnectivity", () => {
       await Promise.resolve();
 
       expect(onlineManager.isOnline()).toBe(true);
+    });
+  });
+
+  describe("## whenOnlineStateKnown (native)", () => {
+    it("waits for the initial read", async () => {
+      const resolveRead = holdInitialRead();
+      wireConnectivity();
+
+      expect(await isKnown()).toBe(false);
+
+      resolveRead(DISCONNECTED);
+
+      expect(await isKnown()).toBe(true);
+    });
+
+    it("settles on a change that arrives before the initial read", async () => {
+      holdInitialRead();
+      wireConnectivity();
+
+      emit(DISCONNECTED);
+
+      expect(await isKnown()).toBe(true);
+    });
+
+    it("settles when the initial read fails", async () => {
+      // Otherwise the paused queue would never replay.
+      readState.mockRejectedValueOnce(new Error("native module unavailable"));
+      wireConnectivity();
+
+      expect(await isKnown()).toBe(true);
     });
   });
 
@@ -204,6 +245,14 @@ describe("# wireConnectivity", () => {
       expect(addListener).not.toHaveBeenCalled();
       expect(readState).not.toHaveBeenCalled();
       expect(appStateListen).not.toHaveBeenCalled();
+    });
+
+    it("never holds anything waiting on the online state", async () => {
+      jest.replaceProperty(Platform, "OS", "web");
+
+      wireConnectivity();
+
+      expect(await isKnown()).toBe(true);
     });
   });
 });
