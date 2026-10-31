@@ -25,7 +25,7 @@ const oldestPersistedUpdatedAt = (cache: QueryCache): number | null => {
  */
 export const useOldestPersistedUpdatedAt = () => {
   const cache = useQueryClient().getQueryCache();
-  const getSnapshot = useCallback(() => oldestPersistedUpdatedAt(cache), [cache]);
+  const readOldest = useCallback(() => oldestPersistedUpdatedAt(cache), [cache]);
 
-  return useSyncExternalStore(cache.subscribe, getSnapshot);
+  return useSyncExternalStore(cache.subscribe, readOldest);
 };
