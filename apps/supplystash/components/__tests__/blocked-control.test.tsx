@@ -12,7 +12,7 @@ jest.mock("@/lib/toast", () => ({
   toastInfo: jest.fn(),
 }));
 
-const OFFLINE_COPY = "You're offline. This needs a connection.";
+const OFFLINE_COPY = "Unable to perform that action, client offline.";
 
 let client: QueryClient;
 const onPress = jest.fn();

@@ -2,9 +2,8 @@ import { type BlockedAction, getBlockedReason } from "@/lib/blocked-reason";
 
 const ONLINE_ONLY: BlockedAction[] = ["ledger-write", "membership", "barcode", "photo", "history"];
 
-const OFFLINE = /You're offline. This needs a connection./;
-const OFFLINE_WEB_CHECK_OFF = /On the web, checking items off needs a connection./;
-const UNREACHABLE = /Can't reach the server/;
+const OFFLINE = /client offline/;
+const UNREACHABLE = /server unreachable/;
 
 const connected = { isOnline: true, isUnreachable: false };
 const offline = { isOnline: false, isUnreachable: false };
@@ -59,7 +58,7 @@ describe("# getBlockedReason", () => {
     it("is blocked on web, which persists nothing", () => {
       expect(getBlockedReason("check-off", { ...offline, isWeb: true })).toEqual({
         blocked: true,
-        reason: expect.stringMatching(OFFLINE_WEB_CHECK_OFF),
+        reason: expect.stringMatching(OFFLINE),
       });
     });
   });

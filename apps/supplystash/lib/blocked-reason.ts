@@ -17,10 +17,8 @@ export type ConnectionState = {
   isWeb: boolean;
 };
 
-const OFFLINE_COPY = "You're offline. This needs a connection.";
-const OFFLINE_WEB_CHECK_OFF_COPY =
-  "You're offline. On the web, checking items off needs a connection.";
-const UNREACHABLE_COPY = "Can't reach the server right now. Try again once it's back.";
+const OFFLINE_COPY = "Unable to perform that action, client offline.";
+const UNREACHABLE_COPY = "Unable to perform that action, server unreachable.";
 
 const NOT_BLOCKED: BlockedReason = { blocked: false };
 
@@ -37,11 +35,9 @@ export const getBlockedReason = (
   { isOnline, isUnreachable, isWeb }: ConnectionState,
 ): BlockedReason => {
   if (!isOnline) {
-    if (action !== "check-off") {
-      return { blocked: true, reason: OFFLINE_COPY };
-    }
+    const queues = action === "check-off" && !isWeb;
 
-    return isWeb ? { blocked: true, reason: OFFLINE_WEB_CHECK_OFF_COPY } : NOT_BLOCKED;
+    return queues ? NOT_BLOCKED : { blocked: true, reason: OFFLINE_COPY };
   }
 
   return isUnreachable ? { blocked: true, reason: UNREACHABLE_COPY } : NOT_BLOCKED;

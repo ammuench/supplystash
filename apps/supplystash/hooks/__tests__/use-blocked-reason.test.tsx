@@ -62,7 +62,7 @@ describe("# useBlockedReason", () => {
 
     expect(result.current).toEqual({
       blocked: true,
-      reason: expect.stringMatching(/Can't reach the server/),
+      reason: expect.stringMatching(/server unreachable/),
     });
   });
 
@@ -95,7 +95,7 @@ describe("# useBlockedReason", () => {
 
         expect(result.current).toEqual({
           blocked: true,
-          reason: expect.stringMatching(/On the web/),
+          reason: expect.stringMatching(/client offline/),
         });
       });
     });

@@ -7,7 +7,7 @@ always "online" and never "refocused": offline writes fail instead of queueing, 
 refetches on reconnect or on return to the foreground.
 
 Origin: `supply-stash-architecture.md` §5.3, §5.6, §5.8. Built in STASH-39 (wiring), STASH-40
-(offline banner), and STASH-41 (unreachable bar).
+(offline banner), STASH-41 (unreachable bar), and STASH-42 (blocked controls).
 
 ## Signal sources
 
@@ -136,6 +136,56 @@ as current, because either the offline banner or this bar is up.
   that fails fast puts the bar up in about 25s. One that hangs waits for the iOS default timeout
   (60s) each time, about 12 minutes in all. A read timeout would fix this and is not built yet.
 
+## Blocked controls
+
+The strips above are app-wide. A control whose action needs the server is blocked **per
+control**, before the tap (§5.1: refusals are pre-emptive, never attempted-then-refused). Wrap it
+in [`BlockedControl`](../apps/supplystash/components/blocked-control.tsx); never hand-roll
+`disabled={!isOnline}`.
+
+```tsx
+<BlockedControl action="ledger-write" label="Add 24 Red Bull">
+  {(disabled) => (
+    <Button disabled={disabled} onPress={add}>
+      <Text>Add 24</Text>
+    </Button>
+  )}
+</BlockedControl>
+```
+
+| Action                                                      | Offline, native     | Offline, web | Unreachable |
+| ----------------------------------------------------------- | ------------------- | ------------ | ----------- |
+| `ledger-write`, `membership`, `barcode`, `photo`, `history` | Blocked             | Blocked      | Blocked     |
+| `check-off`                                                 | Allowed (it queues) | Blocked      | Blocked     |
+
+| Cause       | Reason                                                 |
+| ----------- | ------------------------------------------------------ |
+| Offline     | _"Unable to perform that action, client offline."_     |
+| Unreachable | _"Unable to perform that action, server unreachable."_ |
+
+- **The rules** live in `getBlockedReason()`
+  ([`lib/blocked-reason.ts`](../apps/supplystash/lib/blocked-reason.ts)), a pure function.
+  `useBlockedReason(action)`
+  ([`hooks/use-blocked-reason.ts`](../apps/supplystash/hooks/use-blocked-reason.ts)) feeds it
+  `useIsOnline()`, `useIsServerUnreachable()`, and the platform. Use the hook directly only where
+  a wrapper does not fit.
+- **Unreachable blocks too, check-off included.** The app is online, so TanStack does not pause
+  the write: it would fire and fail. Offline wins when both are true, as with the strips.
+- **Web check-off is blocked offline.** Web persists nothing, so a queued check-off would vanish
+  on refresh (§5.4).
+- **Reason is a toast on tap.** The child renders disabled, and a transparent cover over it calls
+  `toastInfo(reason)`. The toast id is the reason, so repeat taps replace the toast instead of
+  stacking. Info, not error: a blocked tap is not a failure.
+- **Screen readers** skip the disabled child (`aria-hidden`) and land on the cover, which reads
+  `label` with the reason as its hint, so the reason is heard without a tap.
+- **The wrapper `View` is always there**, blocked or not, so the child keeps its state when
+  blocking starts or stops. Pass `className` for layout (`self-start`, `flex-1`).
+- **Wrap the whole row for small controls.** The cover is the wrapper's size, and a bare 16px
+  checkbox is too small to hit.
+- **Fixture:** Settings → _Blocked controls_
+  ([`app/(app)/blocked-controls.tsx`](<../apps/supplystash/app/(app)/blocked-controls.tsx>)), one
+  row per action, with a _Simulate offline_ toggle. Delete it once design signs off.
+
 ## Tests
 
 - [`lib/__tests__/connectivity.test.ts`](../apps/supplystash/lib/__tests__/connectivity.test.ts):
@@ -153,3 +203,9 @@ as current, because either the offline banner or this bar is up.
 - [`hooks/__tests__/use-is-server-unreachable.test.tsx`](../apps/supplystash/hooks/__tests__/use-is-server-unreachable.test.tsx)
   and [`components/__tests__/server-unreachable-bar.test.tsx`](../apps/supplystash/components/__tests__/server-unreachable-bar.test.tsx):
   the captive-portal case (online, requests failing), recovery, offline priority, and Retry.
+- [`lib/__tests__/blocked-reason.test.ts`](../apps/supplystash/lib/__tests__/blocked-reason.test.ts):
+  the blocking matrix, every action by connection state by platform.
+- [`hooks/__tests__/use-blocked-reason.test.tsx`](../apps/supplystash/hooks/__tests__/use-blocked-reason.test.tsx)
+  and [`components/__tests__/blocked-control.test.tsx`](../apps/supplystash/components/__tests__/blocked-control.test.tsx):
+  re-render on connection changes, the disabled child, the toast instead of the action, and the
+  screen-reader hint.
