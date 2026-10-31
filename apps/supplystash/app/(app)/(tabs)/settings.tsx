@@ -21,6 +21,11 @@ export default function SettingsScreen() {
       <Button variant="outline" onPress={() => router.push("/theme-swatches")}>
         <Text>Theme swatches</Text>
       </Button>
+      {/* TODO: remove with app/(app)/blocked-controls.tsx once the designer
+          signs off on the blocked states (STASH-42). */}
+      <Button variant="outline" onPress={() => router.push("/blocked-controls")}>
+        <Text>Blocked controls</Text>
+      </Button>
     </AppSafeScreen>
   );
 }

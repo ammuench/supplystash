@@ -89,9 +89,15 @@ const buttonTextVariants = cva(
   },
 );
 
-type ButtonProps = React.ComponentProps<typeof Pressable> &
+type ButtonBaseProps = React.ComponentProps<typeof Pressable> &
   React.RefAttributes<typeof Pressable> &
   VariantProps<typeof buttonVariants>;
+
+// An icon-only button has no text for a screen reader to read, so it must be
+// named. `aria-label` works on native too: React Native maps it.
+type ButtonProps =
+  | (ButtonBaseProps & { size: "icon"; "aria-label": string })
+  | (ButtonBaseProps & { size?: Exclude<ButtonBaseProps["size"], "icon"> });
 
 function Button({ className, variant, size, ...props }: ButtonProps) {
   return (

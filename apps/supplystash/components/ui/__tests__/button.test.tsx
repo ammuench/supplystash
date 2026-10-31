@@ -29,4 +29,26 @@ describe("# Button", () => {
 
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+
+  describe("## size icon", () => {
+    it("is named by its aria-label", () => {
+      render(
+        <Button size="icon" aria-label="Scan barcode">
+          <Text>+</Text>
+        </Button>,
+      );
+
+      expect(screen.getByRole("button", { name: "Scan barcode" })).toBeOnTheScreen();
+    });
+
+    it("needs an aria-label to type-check", () => {
+      // Checked by `tsc`, not jest: the render only keeps the line in use.
+      render(
+        // @ts-expect-error -- an icon-only button has nothing to read aloud
+        <Button size="icon">
+          <Text>+</Text>
+        </Button>,
+      );
+    });
+  });
 });
