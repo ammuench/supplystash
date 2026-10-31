@@ -6,11 +6,11 @@ to stay short and current. When one of these conflicts with
 architecture doc is the original design narrative and will be retired in pieces as its decisions
 land here.
 
-| Page                                 | Covers                                                                                                          |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| [query-keys.md](./query-keys.md)     | TanStack Query key convention — `homeId` in every key, the factory, how to add a new key.                       |
-| [persistence.md](./persistence.md)   | The two persistence layers (auth session vs. query cache) and what backs each.                                  |
-| [forms.md](./forms.md)               | TanStack Form + zod convention — where schemas live, how errors render.                                         |
-| [connectivity.md](./connectivity.md) | Online and focus state on native, `useIsOnline()`, the offline banner, what "offline" does and does not detect. |
+| Page                                 | Covers                                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------------------------------- |
+| [query-keys.md](./query-keys.md)     | TanStack Query key convention — `homeId` in every key, the factory, how to add a new key.   |
+| [persistence.md](./persistence.md)   | The two persistence layers (auth session vs. query cache) and what backs each.              |
+| [forms.md](./forms.md)               | TanStack Form + zod convention — where schemas live, how errors render.                     |
+| [connectivity.md](./connectivity.md) | Online and focus state on native, `useIsOnline()`, the offline banner, the unreachable bar. |
 
 Setup and environment variables live in the [root README](../README.md).

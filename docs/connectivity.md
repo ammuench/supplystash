@@ -6,8 +6,8 @@ listen to browser events, which React Native does not have. Without wiring, a na
 always "online" and never "refocused": offline writes fail instead of queueing, and nothing
 refetches on reconnect or on return to the foreground.
 
-Origin: `supply-stash-architecture.md` §5.3, §5.6, §5.8. Built in STASH-39 (wiring) and STASH-40
-(banner).
+Origin: `supply-stash-architecture.md` §5.3, §5.6, §5.8. Built in STASH-39 (wiring), STASH-40
+(offline banner), and STASH-41 (unreachable bar).
 
 ## Signal sources
 
@@ -45,8 +45,9 @@ leave disk while it retried.
 ## What "offline" does not detect
 
 A **captive portal** or a dead backend: the device has a network, so the app is "online", but
-requests fail. That is the query-level "refetch is failing" signal from §5.6, not this layer.
-`isInternetReachable` would not help: on iOS, `expo-network` reports it equal to `isConnected`.
+requests fail. That is the query-level signal behind the [unreachable bar](#unreachable-bar), not
+this layer. `isInternetReachable` would not help: on iOS, `expo-network` reports it equal to
+`isConnected`.
 
 ## Why `expo-network`, not NetInfo
 
@@ -84,6 +85,57 @@ once in `app/(app)/_layout.tsx`. It reads `useIsOnline()`, so it is up exactly w
   restarts or the connection drops again. Accepted: multi-day offline sessions are rare, and the
   main message is still correct.
 
+## Unreachable bar
+
+[`components/server-unreachable-bar.tsx`](../apps/supplystash/components/server-unreachable-bar.tsx),
+mounted right after the offline banner. It is up while the app is online but a persisted query
+cannot reach the server. It is what makes `maxAge: Infinity` safe (§5.6): saved data never shows
+as current, because either the offline banner or this bar is up.
+
+| State                              | Native and web                                                     |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| Offline                            | Nothing (the offline banner wins)                                  |
+| Online, a persisted query failing  | _"Can't reach the server — showing your last saved list."_ + Retry |
+| Same, but no persisted data at all | _"Can't reach the server."_ + Retry                                |
+
+- **The signal** is `useIsServerUnreachable()`
+  ([`hooks/use-is-server-unreachable.ts`](../apps/supplystash/hooks/use-is-server-unreachable.ts)):
+  any persisted-root query in `status: "error"` with a network failure. No failure counter: with
+  the default `retry: 2`, a query only reaches `"error"` after 3 failed attempts in a row. A
+  later successful fetch (refocus, reconnect, Retry) clears it.
+- **Network failure only.** `isNetworkFailure()`
+  ([`lib/postgrest-error.ts`](../apps/supplystash/lib/postgrest-error.ts)) reads the error's code.
+  A refusal from a server that answered (an RLS denial, a missing row) would name the wrong
+  cause, so it does not count. Shapes under `.throwOnError()`, checked in postgrest-js 2.112:
+
+  | Case                                                       | Rejects with        | `code`      | Counts |
+  | ---------------------------------------------------------- | ------------------- | ----------- | ------ |
+  | Fetch throws (no route, DNS, a captive portal cutting TLS) | the raw `TypeError` | none        | Yes    |
+  | Non-JSON error body (portal redirect page, proxy HTML 5xx) | `PostgrestError`    | `undefined` | Yes    |
+  | Non-JSON 200 body (a portal's login page)                  | `PostgrestError`    | `""`        | Yes    |
+  | PostgREST cannot reach Postgres                            | `PostgrestError`    | `PGRST0xx`  | Yes    |
+  | Postgres connection exception                              | `PostgrestError`    | `08xxx`     | Yes    |
+  | Anything else (RLS, constraint, JWT, request errors)       | `PostgrestError`    | other       | No     |
+
+  The last two "Yes" rows are matched by pattern, not a list: PostgREST group 0 is "connection
+  with the database", and SQLSTATE class 08 is "connection exception".
+
+- **Offline wins.** Going offline pauses queries but keeps their last error, so without the
+  `useIsOnline()` check both strips would show.
+- **Retry** refetches every query `isUnreachableQuery` matches. It shows _"Retrying…"_ and is
+  disabled while any of them is fetching, including a refetch that focus or reconnect started.
+- **No data, no bar during a refetch.** A query that never had data goes from `"error"` back to
+  `"pending"` when it refetches, so the bar steps aside until that fetch fails too. The screen
+  shows its own loading state meanwhile. With saved data, the query stays in `"error"` and the
+  bar stays up.
+- **Same strip as the offline banner** (`bg-card`, amber icon, pads the top inset). Unlike the
+  banner, the message, not the whole strip, is the `accessible` element: an `accessible` parent
+  hides its children from screen readers, and Retry must stay reachable.
+- **Known limit: a hanging request shows the bar late.** postgrest-js retries a failed GET 3
+  times (1s, 2s, 4s) under TanStack's 3 attempts, so one refetch is up to 12 requests. A request
+  that fails fast puts the bar up in about 25s. One that hangs waits for the iOS default timeout
+  (60s) each time, about 12 minutes in all. A read timeout would fix this and is not built yet.
+
 ## Tests
 
 - [`lib/__tests__/connectivity.test.ts`](../apps/supplystash/lib/__tests__/connectivity.test.ts):
@@ -96,3 +148,8 @@ once in `app/(app)/_layout.tsx`. It reads `useIsOnline()`, so it is up exactly w
 - [`hooks/__tests__/use-oldest-persisted-updated-at.test.tsx`](../apps/supplystash/hooks/__tests__/use-oldest-persisted-updated-at.test.tsx)
   and [`components/__tests__/offline-banner.test.tsx`](../apps/supplystash/components/__tests__/offline-banner.test.tsx):
   the age and the banner's copy per platform.
+- [`lib/__tests__/postgrest-error.test.ts`](../apps/supplystash/lib/__tests__/postgrest-error.test.ts):
+  one case per error shape in the unreachable-bar table.
+- [`hooks/__tests__/use-is-server-unreachable.test.tsx`](../apps/supplystash/hooks/__tests__/use-is-server-unreachable.test.tsx)
+  and [`components/__tests__/server-unreachable-bar.test.tsx`](../apps/supplystash/components/__tests__/server-unreachable-bar.test.tsx):
+  the captive-portal case (online, requests failing), recovery, offline priority, and Retry.
