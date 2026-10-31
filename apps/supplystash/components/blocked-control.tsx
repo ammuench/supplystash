@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Pressable, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
 
 import type { BlockedAction } from "@/lib/blocked-reason";
 
@@ -30,13 +30,14 @@ export const BlockedControl = ({ action, label, className, children }: BlockedCo
   return (
     <View className={cn("relative", className)}>
       {/* Hidden while blocked, so screen readers find only the cover, which
-          carries the reason as its hint. */}
+          carries the reason as its hint. react-native-web drops
+          `accessibilityHint`, so on web the reason joins the label instead. */}
       <View aria-hidden={state.blocked}>{children(state.blocked)}</View>
       {state.blocked && (
         <Pressable
           className="absolute inset-0"
           role="button"
-          accessibilityLabel={label}
+          accessibilityLabel={Platform.OS === "web" ? `${label}. ${state.reason}` : label}
           accessibilityHint={state.reason}
           accessibilityState={{ disabled: true }}
           onPress={() => toastInfo(state.reason, `blocked:${state.reason}`)}

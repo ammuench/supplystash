@@ -1,5 +1,6 @@
 import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { Platform } from "react-native";
 
 import type { BlockedAction } from "@/lib/blocked-reason";
 
@@ -109,6 +110,28 @@ describe("# BlockedControl", () => {
 
       expect(onPress).toHaveBeenCalledTimes(1);
       expect(toastInfo).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("## web", () => {
+    // `replaceProperty` mutates the real module object, so without an
+    // explicit restore the "web" value leaks into every later block.
+    let platform: ReturnType<typeof jest.replaceProperty>;
+
+    beforeEach(() => {
+      platform = jest.replaceProperty(Platform, "OS", "web");
+    });
+
+    afterEach(() => {
+      platform.restore();
+    });
+
+    it("puts the reason in the label, since react-native-web drops hints", () => {
+      renderControl();
+
+      act(() => onlineManager.setOnline(false));
+
+      expect(screen.getByRole("button", { name: `Add item. ${OFFLINE_COPY}` })).toBeOnTheScreen();
     });
   });
 

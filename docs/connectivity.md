@@ -173,15 +173,9 @@ in [`BlockedControl`](../apps/supplystash/components/blocked-control.tsx); never
   the write: it would fire and fail. Offline wins when both are true, as with the strips.
 - **Web check-off is blocked offline.** Web persists nothing, so a queued check-off would vanish
   on refresh (§5.4).
-- **Reason is a toast on tap.** The child renders disabled, and a transparent cover over it calls
-  `toastInfo(reason)`. The toast id is the reason, so repeat taps replace the toast instead of
-  stacking. Info, not error: a blocked tap is not a failure.
-- **Screen readers** skip the disabled child (`aria-hidden`) and land on the cover, which reads
-  `label` with the reason as its hint, so the reason is heard without a tap.
-- **The wrapper `View` is always there**, blocked or not, so the child keeps its state when
-  blocking starts or stops. Pass `className` for layout (`self-start`, `flex-1`).
-- **Wrap the whole row for small controls.** The cover is the wrapper's size, and a bare 16px
-  checkbox is too small to hit.
+- **The reason shows as a toast on tap.** `label` names the control while it is blocked.
+- **Layout:** `className` styles the wrapper (`self-start`, `flex-1`). Wrap the whole row for a
+  small control like a checkbox: the tap target is the wrapper's size.
 - **Fixture:** Settings → _Blocked controls_
   ([`app/(app)/blocked-controls.tsx`](<../apps/supplystash/app/(app)/blocked-controls.tsx>)), one
   row per action, with a _Simulate offline_ toggle. Delete it once design signs off.

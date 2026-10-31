@@ -84,7 +84,7 @@ const BlockedControls = () => (
     <Row title="barcode (icon only)">
       <BlockedControl action="barcode" label="Scan barcode" className="self-start">
         {(disabled) => (
-          <Button variant="outline" size="icon" disabled={disabled}>
+          <Button variant="outline" size="icon" disabled={disabled} aria-label="Scan barcode">
             <Icon as={ScanBarcodeIcon} />
           </Button>
         )}
