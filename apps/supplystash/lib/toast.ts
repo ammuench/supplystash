@@ -22,7 +22,9 @@ export const toastError = (message: string) => {
   return toast.error(message, DEFAULT_POSITION);
 };
 
-export const toastInfo = (message: string) => toast(message, DEFAULT_POSITION);
+/** `id` makes repeat calls replace the toast on screen instead of stacking. */
+export const toastInfo = (message: string, id?: string) =>
+  toast(message, { ...DEFAULT_POSITION, id });
 
 /**
  * Tie a toast to a promise: spinner while pending, then success or error. Use
