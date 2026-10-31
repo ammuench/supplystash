@@ -6,7 +6,8 @@ listen to browser events, which React Native does not have. Without wiring, a na
 always "online" and never "refocused": offline writes fail instead of queueing, and nothing
 refetches on reconnect or on return to the foreground.
 
-Origin: `supply-stash-architecture.md` §5.3, §5.6, §5.8. Built in STASH-39.
+Origin: `supply-stash-architecture.md` §5.3, §5.6, §5.8. Built in STASH-39 (wiring) and STASH-40
+(banner).
 
 ## Signal sources
 
@@ -54,6 +55,35 @@ ping on iOS, which rule 2 does not use. With that gone, the tiebreaker is the sa
 picked `expo-sqlite` ([persistence.md](./persistence.md)): `expo-network` is in Expo's own module
 set and upgrades with the SDK. Native module, so it needs a **dev build**.
 
+## Offline banner
+
+[`components/offline-banner.tsx`](../apps/supplystash/components/offline-banner.tsx), mounted
+once in `app/(app)/_layout.tsx`. It reads `useIsOnline()`, so it is up exactly while writes queue.
+
+| State   | Native                                                                                                 | Web                                                                          |
+| ------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| Online  | Nothing                                                                                                | Nothing                                                                      |
+| Offline | _"Offline — changes will sync when the connection is reestablished."_ + age if the data is over 3 days | _"Offline — you can't change values until the connection is reestablished."_ |
+
+- **Age** is _"Last updated 5 days ago."_, from `useOldestPersistedUpdatedAt()`
+  ([`hooks/use-oldest-persisted-updated-at.ts`](../apps/supplystash/hooks/use-oldest-persisted-updated-at.ts)):
+  the oldest `dataUpdatedAt` across the persisted roots (`isPersistedQuery`). Memory-only roots
+  are always as fresh as the session, so they say nothing about age.
+- **No age on web.** Web persists nothing ([persistence.md](./persistence.md)), so its data is
+  never older than the tab.
+- **Pushes content, never covers it.** It sits above the `Stack` in a flex column, so screens
+  shrink from the top. It pads the top inset itself; a screen's native `SafeAreaView` pads only
+  where it overlaps the unsafe area, so it adds nothing below the banner. An overlay would hide
+  the top of every screen for as long as the device is offline.
+- **A `bg-card` strip with an amber icon, not §5.6's "dark top banner".** A dark strip in the
+  light theme sits under dark status-bar text. A theme surface keeps the existing status-bar
+  style readable in both themes. Amber matches §5.6: it already means "your changes are
+  queueing".
+- **Known limit.** The age is worked out when the banner appears and is not refreshed while
+  offline. If the app stays suspended offline across the 3-day mark, the age shows once the app
+  restarts or the connection drops again. Accepted: multi-day offline sessions are rare, and the
+  main message is still correct.
+
 ## Tests
 
 - [`lib/__tests__/connectivity.test.ts`](../apps/supplystash/lib/__tests__/connectivity.test.ts):
@@ -63,3 +93,6 @@ set and upgrades with the SDK. Native module, so it needs a **dev build**.
   the hook, including unsubscribe on unmount.
 - `expo-network` ships no jest mock. The global one in `utils/testing/setupTests.ts` reports a
   connected device; take the listener from `addNetworkStateListener.mock.calls` to fire changes.
+- [`hooks/__tests__/use-oldest-persisted-updated-at.test.tsx`](../apps/supplystash/hooks/__tests__/use-oldest-persisted-updated-at.test.tsx)
+  and [`components/__tests__/offline-banner.test.tsx`](../apps/supplystash/components/__tests__/offline-banner.test.tsx):
+  the age and the banner's copy per platform.

@@ -1,6 +1,13 @@
 import { DateTime, Settings } from "luxon";
 
-import { daysUntil, formatDate, isExpired, isExpiringSoon, parseIso } from "@/lib/dates";
+import {
+  daysUntil,
+  formatDate,
+  formatRelativeMillis,
+  isExpired,
+  isExpiringSoon,
+  parseIso,
+} from "@/lib/dates";
 
 // Pin both the clock and the zone: daysUntil counts calendar days, so the
 // answers depend on the machine's timezone as well as the current time.
@@ -28,6 +35,12 @@ describe("# parseIso", () => {
 describe("# formatDate", () => {
   it("falls back to an em dash when there is no date", () => {
     expect(formatDate(null)).toBe("—");
+  });
+});
+
+describe("# formatRelativeMillis", () => {
+  it("reads a past timestamp as an age", () => {
+    expect(formatRelativeMillis(NOW.minus({ days: 5 }).toMillis())).toBe("5 days ago");
   });
 });
 

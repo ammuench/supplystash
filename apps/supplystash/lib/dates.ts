@@ -22,6 +22,10 @@ export const formatDate = (iso: string | null | undefined): string =>
 export const formatRelative = (iso: string | null | undefined): string =>
   parseIso(iso)?.toRelative() ?? "—";
 
+/** Relative form of an epoch-millisecond timestamp, like TanStack's `dataUpdatedAt`. */
+export const formatRelativeMillis = (ms: number): string =>
+  DateTime.fromMillis(ms).toRelative() ?? "—";
+
 /**
  * Whole days until `iso`, negative once past. Uses calendar-day boundaries, not
  * 24-hour spans, so an item expiring late tonight reads as 0 days and not 1.
