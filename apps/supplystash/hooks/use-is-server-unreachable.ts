@@ -7,8 +7,10 @@ import { isNetworkFailure } from "@/lib/postgrest-error";
 import { isPersistedQuery } from "@/lib/query-persister-config";
 
 /** A persisted query whose last fetch failed without a real server answer.
- * `status` stays "error" until a later fetch succeeds, so this also covers a
- * retry that is still in flight.
+ * With saved data, `status` stays "error" until a later fetch succeeds, so a
+ * refetch in flight still counts. Without data, a refetch resets it to
+ * "pending" and it stops counting until that fetch fails too; the screen shows
+ * its own loading state meanwhile.
  */
 export const isUnreachableQuery = (query: Query) =>
   isPersistedQuery(query) && query.state.status === "error" && isNetworkFailure(query.state.error);
