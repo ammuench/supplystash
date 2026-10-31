@@ -79,8 +79,10 @@ once in `app/(app)/_layout.tsx`. It reads `useIsOnline()`, so it is up exactly w
   light theme sits under dark status-bar text. A theme surface keeps the existing status-bar
   style readable in both themes. Amber matches §5.6: it already means "your changes are
   queueing".
-- **Known limit.** The age is checked when the query cache or the connection changes, not on a
-  timer. An app left open offline across the 3-day mark shows the age on the next cache event.
+- **Known limit.** The age is worked out when the banner appears and is not refreshed while
+  offline. If the app stays suspended offline across the 3-day mark, the age shows once the app
+  restarts or the connection drops again. Accepted: multi-day offline sessions are rare, and the
+  main message is still correct.
 
 ## Tests
 
