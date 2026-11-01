@@ -12,11 +12,21 @@ import { cn } from "@/lib/utils";
 
 // Bottom by default: the top of the screen is the notch/status-bar area and
 // the header, and a toast there covers navigation the user may be reaching for.
-const DEFAULT_POSITION: ToastOptions = { position: ToastPosition.BOTTOM };
+// Tap dismisses instead of swipe: the library only flings a bottom toast down,
+// and on iOS that collides with the home-indicator system gesture.
+const DEFAULT_OPTIONS: ToastOptions = {
+  position: ToastPosition.BOTTOM,
+  isSwipeable: false,
+  onPress: (shown) => toast.dismiss(shown.id),
+};
 
-// Info matches success (2s) rather than the library's 4s for plain toasts.
-// Warn matches error (4s), since it is worth reading in full.
-const INFO_DURATION_MS = 2000;
+// The library announces a toast to screen readers only when this is set (its
+// spelling); the toast view itself is not a live region.
+const announce = (message: string): ToastOptions => ({ accessabilityMessage: message });
+
+// Info and warn match error (4s): long messages like the session-expiry notice
+// need time to read, and a tap dismisses any toast sooner.
+const INFO_DURATION_MS = 4000;
 const WARN_DURATION_MS = 4000;
 
 // The library draws its colored bar only for success and error, in fixed colors
@@ -40,18 +50,27 @@ const ERROR_STYLE: ToastOptions = {
 
 export const toastSuccess = (message: string) => {
   void hapticSuccess();
-  return toast.success(message, { ...DEFAULT_POSITION, ...SUCCESS_STYLE });
+  return toast.success(message, {
+    ...DEFAULT_OPTIONS,
+    ...SUCCESS_STYLE,
+    ...announce(message),
+  });
 };
 
 export const toastError = (message: string) => {
   void hapticError();
-  return toast.error(message, { ...DEFAULT_POSITION, ...ERROR_STYLE });
+  return toast.error(message, {
+    ...DEFAULT_OPTIONS,
+    ...ERROR_STYLE,
+    ...announce(message),
+  });
 };
 
 /** `id` makes repeat calls replace the toast on screen instead of stacking. */
 export const toastInfo = (message: string, id?: string) =>
   toast(message, {
-    ...DEFAULT_POSITION,
+    ...DEFAULT_OPTIONS,
+    ...announce(message),
     id,
     duration: INFO_DURATION_MS,
     icon: <Indicator className="bg-info" />,
@@ -61,7 +80,8 @@ export const toastInfo = (message: string, id?: string) =>
 export const toastWarn = (message: string, id?: string) => {
   void hapticWarning();
   return toast(message, {
-    ...DEFAULT_POSITION,
+    ...DEFAULT_OPTIONS,
+    ...announce(message),
     id,
     duration: WARN_DURATION_MS,
     icon: <Indicator className="bg-warning" />,
@@ -77,7 +97,7 @@ export const toastPromise = <T,>(
   messages: { loading: string; success: string; error: string },
 ) =>
   toast.promise(promise, messages, {
-    ...DEFAULT_POSITION,
+    ...DEFAULT_OPTIONS,
     success: SUCCESS_STYLE,
     error: ERROR_STYLE,
   });
