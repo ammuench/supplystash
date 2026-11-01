@@ -95,7 +95,7 @@ describe("# useBlockedReason", () => {
 
         expect(result.current).toEqual({
           blocked: true,
-          reason: expect.stringMatching(/client offline/),
+          reason: expect.stringMatching(/while app is offline/),
         });
       });
     });

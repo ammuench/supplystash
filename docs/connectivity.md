@@ -160,7 +160,7 @@ in [`BlockedControl`](../apps/supplystash/components/blocked-control.tsx); never
 
 | Cause       | Reason                                                 |
 | ----------- | ------------------------------------------------------ |
-| Offline     | _"Unable to perform that action, client offline."_     |
+| Offline     | _"Cannot perform that action while app is offline."_   |
 | Unreachable | _"Unable to perform that action, server unreachable."_ |
 
 - **The rules** live in `getBlockedReason()`

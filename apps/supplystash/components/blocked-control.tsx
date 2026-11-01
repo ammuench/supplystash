@@ -31,7 +31,10 @@ export const BlockedControl = ({ action, label, className, children }: BlockedCo
     <View className={cn("relative", className)}>
       {/* Hidden while blocked, so screen readers find only the cover, which
           carries the reason as its hint. react-native-web drops
-          `accessibilityHint`, so on web the reason joins the label instead. */}
+          `accessibilityHint`, so on web the reason joins the label instead.
+          Android turns `accessibilityState.disabled` into `setEnabled(false)`,
+          which drops touches, so taps would fall through to the disabled child.
+          There the hint carries the blocked state alone. */}
       <View aria-hidden={state.blocked}>{children(state.blocked)}</View>
       {state.blocked && (
         <Pressable
@@ -39,7 +42,7 @@ export const BlockedControl = ({ action, label, className, children }: BlockedCo
           role="button"
           accessibilityLabel={Platform.OS === "web" ? `${label}. ${state.reason}` : label}
           accessibilityHint={state.reason}
-          accessibilityState={{ disabled: true }}
+          accessibilityState={Platform.OS === "android" ? undefined : { disabled: true }}
           onPress={() => toastInfo(state.reason, `blocked:${state.reason}`)}
         />
       )}

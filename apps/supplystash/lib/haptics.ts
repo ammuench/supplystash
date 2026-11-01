@@ -24,6 +24,10 @@ export const hapticImpact = () =>
 export const hapticSuccess = () =>
   safely(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
 
+/** Something needs attention but nothing failed. Pair with a warn toast. */
+export const hapticWarning = () =>
+  safely(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning));
+
 /** An action failed. Pair with an error toast. */
 export const hapticError = () =>
   safely(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));

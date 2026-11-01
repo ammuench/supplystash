@@ -19,8 +19,11 @@ export const RootNavigator = () => {
     return null;
   }
 
+  // No header here: each group runs its own stack, and a header at this level
+  // shows the group's route name ("(app)") above everything, offline banner
+  // included.
   return (
-    <Stack>
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>
