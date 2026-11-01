@@ -17,7 +17,7 @@ export type ConnectionState = {
   isWeb: boolean;
 };
 
-const OFFLINE_COPY = "Unable to perform that action, client offline.";
+const OFFLINE_COPY = "Cannot perform that action while app is offline.";
 const UNREACHABLE_COPY = "Unable to perform that action, server unreachable.";
 
 const NOT_BLOCKED: BlockedReason = { blocked: false };

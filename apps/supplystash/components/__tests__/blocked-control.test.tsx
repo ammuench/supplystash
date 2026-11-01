@@ -13,7 +13,7 @@ jest.mock("@/lib/toast", () => ({
   toastInfo: jest.fn(),
 }));
 
-const OFFLINE_COPY = "Unable to perform that action, client offline.";
+const OFFLINE_COPY = "Cannot perform that action while app is offline.";
 
 let client: QueryClient;
 const onPress = jest.fn();
@@ -102,6 +102,16 @@ describe("# BlockedControl", () => {
       expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
     });
 
+    it("marks the cover disabled for screen readers", () => {
+      renderControl();
+
+      act(() => onlineManager.setOnline(false));
+
+      expect(screen.getByRole("button", { name: "Add item" })).toHaveProp("accessibilityState", {
+        disabled: true,
+      });
+    });
+
     it("leaves the native check-off alone, since it queues", () => {
       renderControl("check-off");
 
@@ -132,6 +142,30 @@ describe("# BlockedControl", () => {
       act(() => onlineManager.setOnline(false));
 
       expect(screen.getByRole("button", { name: `Add item. ${OFFLINE_COPY}` })).toBeOnTheScreen();
+    });
+  });
+
+  describe("## android", () => {
+    let platform: ReturnType<typeof jest.replaceProperty>;
+
+    beforeEach(() => {
+      platform = jest.replaceProperty(Platform, "OS", "android");
+    });
+
+    afterEach(() => {
+      platform.restore();
+    });
+
+    // Android maps `accessibilityState.disabled` to `setEnabled(false)`, and a
+    // disabled view never receives touches, so the cover could not toast.
+    it("leaves the cover enabled so it still receives taps", () => {
+      renderControl();
+
+      act(() => onlineManager.setOnline(false));
+
+      const cover = screen.getByRole("button", { name: "Add item" });
+
+      expect(cover.props.accessibilityState?.disabled).toBeFalsy();
     });
   });
 

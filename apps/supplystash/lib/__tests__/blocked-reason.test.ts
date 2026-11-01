@@ -2,7 +2,7 @@ import { type BlockedAction, getBlockedReason } from "@/lib/blocked-reason";
 
 const ONLINE_ONLY: BlockedAction[] = ["ledger-write", "membership", "barcode", "photo", "history"];
 
-const OFFLINE = /client offline/;
+const OFFLINE = /while app is offline/;
 const UNREACHABLE = /server unreachable/;
 
 const connected = { isOnline: true, isUnreachable: false };
