@@ -32,8 +32,10 @@ const WARN_DURATION_MS = 4000;
 // The library draws its colored bar only for success and error, in fixed colors
 // that ignore the theme. So every state hides that bar and passes this themed
 // copy as the icon instead. Same 3px bar and spacing as the library's.
+// `self-stretch`, not `h-full`: the toast row only has a min-height, and on web
+// a percentage height against that resolves to zero, which hid the bar.
 const Indicator = ({ className }: { className: string }) => (
-  <View className={cn("mr-3 h-full w-[3px] rounded-full", className)} />
+  <View className={cn("mr-3 w-[3px] self-stretch rounded-full", className)} />
 );
 
 const HIDE_LIBRARY_BAR: ToastOptions["styles"] = { indicator: { display: "none" } };
