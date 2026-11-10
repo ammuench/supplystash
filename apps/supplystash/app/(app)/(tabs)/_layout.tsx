@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { TabBarIconProps } from "@/components/tab-bar-icons";
 
 import { AddItemTabIcon, TabBarIcon } from "@/components/tab-bar-icons";
+import { TAB_BAR_HEIGHT } from "@/lib/tab-bar";
 
 // `tabBarIcon` is called on every tab-bar render with the active tint and sizing,
 // so these live at module scope: one stable identity each for the life of the
@@ -28,11 +29,6 @@ const ADD_ITEM_LISTENERS = {
   },
 };
 
-// React Navigation's default bar is 49pt, which leaves the icon pill and label
-// touching the edges. A custom height replaces its own inset math, so the
-// bottom safe-area inset is added back by hand.
-const TAB_BAR_HEIGHT = 60;
-
 // The bar pins each tab's content to its top edge, so the extra height above
 // would all land under the label. This moves some of it above the icon.
 const TAB_BAR_ICON_STYLE = { marginTop: 4 };
@@ -44,6 +40,8 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        // A custom height replaces the bar's own inset math, so the bottom
+        // safe-area inset is added back by hand.
         tabBarStyle: { height: TAB_BAR_HEIGHT + bottom },
         tabBarIconStyle: TAB_BAR_ICON_STYLE,
       }}
