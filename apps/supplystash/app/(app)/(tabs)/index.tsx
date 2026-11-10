@@ -1,11 +1,6 @@
-import { AppSafeScreen } from "@/components/app-safe-screen";
-import { Text } from "@/components/ui/text";
+import { PlaceholderScreen } from "@/components/placeholder-screen";
 
-// Stub screen — real designs are pending; inventory lands in project 6.
-export default function InventoryScreen() {
-  return (
-    <AppSafeScreen className="items-center justify-center p-4">
-      <Text className="text-xl font-semibold">Inventory</Text>
-    </AppSafeScreen>
-  );
+// Placeholder: the homes index lands in STASH-56.
+export default function HomeScreen() {
+  return <PlaceholderScreen title="Home" />;
 }

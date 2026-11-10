@@ -1,5 +1,4 @@
 import "@/global.css";
-import { Toasts } from "@backpackapp-io/react-native-toast";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
 import { ThemeProvider } from "expo-router/react-navigation";
@@ -11,6 +10,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
 import { useUniwind, withUniwind } from "uniwind";
 
+import { AppToasts } from "@/components/app-toasts";
 import { QueryProvider } from "@/components/query-provider";
 import { RootNavigator } from "@/components/root-navigator";
 import { SplashScreenController } from "@/components/splash-screen-controller";
@@ -72,7 +72,7 @@ export default function RootLayout() {
                     {/* Toasts sit last so they render above the stack and the
                         portal host, and inside SafeAreaProvider so they respect
                         the notch. */}
-                    <Toasts />
+                    <AppToasts />
                   </BottomSheetModalProvider>
                 </AnalyticsProvider>
               </SessionProvider>
