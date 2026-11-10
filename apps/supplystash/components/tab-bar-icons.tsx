@@ -3,6 +3,7 @@ import type { ColorValue } from "react-native";
 
 import { PlusIcon } from "lucide-react-native";
 import { View } from "react-native";
+import { useCSSVariable } from "uniwind";
 
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
@@ -38,15 +39,33 @@ export const TabBarIcon = ({
 // filled disc the size of the other icons, with the plus cut out of it. Lucide
 // has no filled circle-plus, so the disc is a view. `info` is a stand-in until
 // the designer settles on a brand token for it.
-// The wrapper matches the pill's padding so the icon lines up with its
-// neighbors; it never shows the pill, because the slot is never the focused tab.
-export const AddItemTabIcon = ({ size }: Pick<TabBarIconProps, "size">) => (
-  <View className="items-center justify-center px-4 py-0.5">
+//
+// The plus gets its color as a prop, like the other tab icons do. A color class
+// on the icon did not take effect on web.
+const AddItemDisc = ({ size }: Pick<TabBarIconProps, "size">) => {
+  const plusColor = useCSSVariable("--color-info-foreground");
+
+  return (
     <View
       className="items-center justify-center rounded-full bg-info"
       style={{ width: size, height: size }}
     >
-      <Icon as={PlusIcon} className="text-info-foreground" size={size * 0.7} strokeWidth={2.5} />
+      <Icon
+        as={PlusIcon}
+        color={typeof plusColor === "string" ? plusColor : undefined}
+        size={size * 0.7}
+        strokeWidth={2.5}
+      />
     </View>
+  );
+};
+
+// The wrapper matches the pill's padding so the icon lines up with its
+// neighbors; it never shows the pill, because the slot is never the focused tab.
+// React Navigation calls this as a plain function, so the hook lives in
+// AddItemDisc, a real component.
+export const AddItemTabIcon = ({ size }: Pick<TabBarIconProps, "size">) => (
+  <View className="items-center justify-center px-4 py-0.5">
+    <AddItemDisc size={size} />
   </View>
 );
