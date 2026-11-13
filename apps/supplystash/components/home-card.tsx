@@ -1,10 +1,11 @@
 import { HouseIcon } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { useCSSVariable } from "uniwind";
 
 import type { Home } from "@/state/homes";
 
 import { Icon } from "@/components/ui/icon";
+import { PressableSurface } from "@/components/ui/pressable-surface";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +47,7 @@ export type HomeCardProps = {
  * ```
  */
 export const HomeCard = ({ home, onPress, className }: HomeCardProps) => (
-  <Pressable
+  <PressableSurface
     role="link"
     aria-label={home.name}
     // Three direct children, so the one `gap` spaces the tile, the name and
@@ -61,5 +62,5 @@ export const HomeCard = ({ home, onPress, className }: HomeCardProps) => (
       {/* The stored role is lowercase (`owner`); capitalized for display only. */}
       <Text className="text-sm leading-tight text-muted-foreground capitalize">{home.role}</Text>
     </Text>
-  </Pressable>
+  </PressableSurface>
 );
