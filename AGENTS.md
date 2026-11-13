@@ -23,7 +23,11 @@ Run from the repo root.
 | pgTAP tests, migration lint    | `pnpm db:test`, `pnpm db:lint`   |
 | Regenerate `database.types.ts` | `pnpm db:types`                  |
 
-All of them must pass before a change is called done.
+Tests, types, lint and the format check must pass before any change is called done.
+
+The `db:*` commands are only for a change under `supabase/`: then `db:test` and `db:lint` must pass
+too. `pnpm db:reset` rebuilds the local database from the migrations and deletes all local data, so
+say so before running it.
 
 ## Read first
 
@@ -42,7 +46,9 @@ All of them must pass before a change is called done.
 - **Tappable card, row or tile:** use `PressableSurface` (`components/ui/pressable-surface.tsx`),
   never a bare `Pressable`. It carries the standard pressed and hover feedback. Buttons use `Button`.
 - **A control whose action needs the server:** wrap it in `BlockedControl`
-  (`components/blocked-control.tsx`) with the matching action from `lib/blocked-reason.ts`.
+  (`components/blocked-control.tsx`) with the matching action from `lib/blocked-reason.ts`. It covers
+  only that control. Any other way of starting the action (a keyboard's Done key on a form, a swipe)
+  goes through `useBlockedGuard` (`hooks/use-blocked-guard.ts`).
 - **Screens:** use `AppSafeScreen` or `AppSafeScrollScreen` (`components/app-safe-screen.tsx`). Under
   a visible Stack header pass `edges={["bottom", "left", "right"]}`.
 - **Colors:** theme tokens only (`bg-muted`, `text-muted-foreground`, `bg-accent`, …), never raw

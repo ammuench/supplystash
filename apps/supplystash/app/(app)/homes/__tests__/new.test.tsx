@@ -5,6 +5,7 @@ import { router } from "expo-router";
 
 import NewHomeScreen from "@/app/(app)/homes/new";
 import { HOME_NAME_MAX_LENGTH, HOME_NAME_TOO_LONG_MESSAGE } from "@/lib/schemas/home";
+import { toastInfo } from "@/lib/toast";
 
 // The screen is rendered on its own, outside a navigator: `Stack.Screen` only
 // sets the header, and a successful create is asserted on `router.replace`.
@@ -226,6 +227,31 @@ describe("# NewHomeScreen", () => {
       await user.press(screen.getByRole("button", { name: "Create home" }));
 
       expect(mockRpc).not.toHaveBeenCalled();
+    });
+
+    // The keyboard's Done key submits without going through the button, so the
+    // button's cover does not stop it.
+    it("sends no request and shows the reason when submitted from the keyboard", async () => {
+      onlineManager.setOnline(false);
+      renderScreen();
+      const user = userEvent.setup();
+
+      await user.type(screen.getByLabelText("Home name"), "Lake House", { submitEditing: true });
+
+      expect(mockRpc).not.toHaveBeenCalled();
+      expect(toastInfo).toHaveBeenCalledWith(
+        "Cannot perform that action while app is offline.",
+        expect.any(String),
+      );
+    });
+
+    it("still submits from the keyboard while online", async () => {
+      renderScreen();
+      const user = userEvent.setup();
+
+      await user.type(screen.getByLabelText("Home name"), "Lake House", { submitEditing: true });
+
+      expect(mockRpc).toHaveBeenCalledWith("create_home", { p_name: "Lake House" });
     });
   });
 });

@@ -260,39 +260,77 @@ describe("# useCreateHome", () => {
     expect(id).toBe(NEW_HOME_ID);
   });
 
-  // The screen opens the new home's details as soon as this resolves, and
-  // `useHome` reads it from the list.
-  it("has the new home in the homes list by the time it resolves", async () => {
-    const { result } = renderHook(() => ({ list: useHomes(), create: useCreateHome() }), {
+  const loadedList = async () => {
+    respondWith([row("home-1", "Flat", [{ user_id: ME, role: "member" }])]);
+    const rendered = renderHook(() => ({ list: useHomes(), create: useCreateHome() }), {
       wrapper,
     });
-    await waitFor(() => expect(result.current.list.isSuccess).toBe(true));
-    expect(result.current.list.data).toEqual([]);
+    await waitFor(() => expect(rendered.result.current.list.isSuccess).toBe(true));
 
-    respondWith([row(NEW_HOME_ID, "Cabin", [{ user_id: ME, role: "owner" }])]);
-    // Read inside `act`, at the moment `mutateAsync` resolves.
-    const listAtResolve = await inAct(async () => {
-      await result.current.create.mutateAsync("Cabin");
+    return rendered;
+  };
 
-      return client.getQueryData(queryKeys.homes());
-    });
+  // The screen opens the new home's details as soon as this resolves, and
+  // `useHome` reads it from the list. The refetch here never answers, as on a
+  // connection that dropped right after the create: the mutation must not
+  // wait for it.
+  it("adds the new home to the cached list without waiting for the refetch", async () => {
+    const { result } = await loadedList();
 
-    expect(listAtResolve).toEqual([
+    mockResult.mockReturnValue(new Promise(() => {}));
+    const id = await inAct(() => result.current.create.mutateAsync("Cabin"));
+
+    expect(id).toBe(NEW_HOME_ID);
+    expect(client.getQueryData(queryKeys.homes())).toEqual([
       { id: NEW_HOME_ID, name: "Cabin", description: null, memberCount: 1, role: "owner" },
+      { id: "home-1", name: "Flat", description: null, memberCount: 1, role: "member" },
     ]);
   });
 
-  // The home exists on the server either way, so the caller still gets its id.
-  it("still resolves when the list refetch fails", async () => {
-    const { result } = renderHook(() => ({ list: useHomes(), create: useCreateHome() }), {
-      wrapper,
-    });
-    await waitFor(() => expect(result.current.list.isSuccess).toBe(true));
+  it("stores the name trimmed, as the server does", async () => {
+    const { result } = await loadedList();
+
+    mockResult.mockReturnValue(new Promise(() => {}));
+    await inAct(() => result.current.create.mutateAsync("  Cabin  "));
+
+    expect(client.getQueryData<{ name: string }[]>(queryKeys.homes())?.[0]?.name).toBe("Cabin");
+  });
+
+  it("replaces the cached list with the server's copy once the refetch lands", async () => {
+    const { result } = await loadedList();
+
+    const fromServer = [
+      row(NEW_HOME_ID, "Cabin", [{ user_id: ME, role: "owner" }], "Set by a trigger"),
+      row("home-1", "Flat", [{ user_id: ME, role: "member" }]),
+    ];
+    respondWith(fromServer);
+    await inAct(() => result.current.create.mutateAsync("Cabin"));
+
+    await waitFor(() =>
+      expect(result.current.list.data?.[0]?.description).toBe("Set by a trigger"),
+    );
+  });
+
+  // The home exists on the server either way, so it stays in the list.
+  it("keeps the new home in the list when the refetch fails", async () => {
+    const { result } = await loadedList();
 
     mockResult.mockRejectedValue(new Error("network down"));
     const id = await inAct(() => result.current.create.mutateAsync("Cabin"));
 
     expect(id).toBe(NEW_HOME_ID);
+    expect(
+      client.getQueryData<{ id: string }[]>(queryKeys.homes())?.map((home) => home.id),
+    ).toEqual([NEW_HOME_ID, "home-1"]);
+  });
+
+  // Nothing to add to. The first `useHomes` fetches the whole list.
+  it("leaves the cache empty when no list has been loaded", async () => {
+    const { result } = renderHook(() => useCreateHome(), { wrapper });
+
+    await inAct(() => result.current.mutateAsync("Cabin"));
+
+    expect(client.getQueryData(queryKeys.homes())).toBeUndefined();
   });
 
   it("rejects with the PostgrestError itself, code intact", async () => {

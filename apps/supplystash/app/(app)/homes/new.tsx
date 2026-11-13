@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Text } from "@/components/ui/text";
+import { useBlockedGuard } from "@/hooks/use-blocked-guard";
 import { isNetworkFailure, postgrestErrorCode } from "@/lib/postgrest-error";
 import { createHomeSchema, HOME_NAME_TOO_LONG_MESSAGE } from "@/lib/schemas/home";
 import { useCreateHome } from "@/state/homes";
@@ -59,6 +60,12 @@ export default function NewHomeScreen() {
     },
   });
 
+  // `BlockedControl` below covers only the button. The keyboard's Done key
+  // submits too, so it goes through the guard: a blocked submit shows the
+  // reason and sends nothing, as a tap on the blocked button does.
+  const guard = useBlockedGuard("membership");
+  const submit = () => guard(() => void form.handleSubmit());
+
   return (
     <>
       <Stack.Screen options={{ headerShown: true, title: "New Home" }} />
@@ -81,7 +88,7 @@ export default function NewHomeScreen() {
                 value={field.state.value}
                 onChangeText={field.handleChange}
                 onBlur={field.handleBlur}
-                onSubmitEditing={() => void form.handleSubmit()}
+                onSubmitEditing={submit}
                 returnKeyType="done"
               />
               <FormFieldErrors errors={field.state.meta.errors} />
@@ -94,12 +101,8 @@ export default function NewHomeScreen() {
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
             <BlockedControl action="membership" label="Create home">
-              {(blocked) => (
-                <Button
-                  className="w-full"
-                  disabled={blocked || isSubmitting}
-                  onPress={() => void form.handleSubmit()}
-                >
+              {(isBlocked) => (
+                <Button className="w-full" disabled={isBlocked || isSubmitting} onPress={submit}>
                   <Text>{isSubmitting ? "Creating…" : "Create home"}</Text>
                 </Button>
               )}

@@ -86,8 +86,9 @@ export const useHome = (homeId: string) => {
 
 /**
  * Creates a home with the signed-in user as its owner. `mutateAsync(name)`
- * resolves with the new home's id once the homes list has refetched, so a
- * screen opened with that id already finds the home in `useHome`.
+ * resolves with the new home's id as soon as the server has created it. By
+ * then the home is already in the cached list, so a screen opened with that id
+ * finds it in `useHome` without waiting for a refetch.
  */
 export const useCreateHome = () => {
   const queryClient = useQueryClient();
@@ -106,8 +107,29 @@ export const useCreateHome = () => {
     // form's submit would never settle. "always" sends it regardless, so it
     // fails at once and the form shows the error.
     networkMode: "always",
-    // Returned, so the mutation stays pending until the refetch settles. A
-    // failed refetch does not reject: the home was still created.
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.homes() }),
+    onSuccess: (homeId, name) => {
+      // Every field of a new home is known without asking the server: the
+      // caller is its only member and its owner. Writing it into the cached
+      // list here means the mutation does not wait on the refetch below. That
+      // refetch retries, and a retry waits for the network, so awaiting it
+      // could leave a form stuck on "Creating…" for a home that already exists.
+      const created: Home = {
+        id: homeId,
+        // `create_home` trims the name before it stores it.
+        name: name.trim(),
+        description: null,
+        memberCount: 1,
+        role: "owner",
+      };
+      // No cached list yet: leave it. The first `useHomes` fetches it whole.
+      queryClient.setQueryData<Home[]>(queryKeys.homes(), (homes) =>
+        homes && !homes.some((home) => home.id === homeId)
+          ? [...homes, created].sort((a, b) => a.name.localeCompare(b.name))
+          : homes,
+      );
+      // Not returned: it runs in the background and replaces the list with
+      // the server's copy, in the server's sort order.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.homes() });
+    },
   });
 };
