@@ -1,4 +1,4 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/lib/supabase";
 import { queryKeys } from "@/state/query-keys";
@@ -81,5 +81,33 @@ export const useHome = (homeId: string) => {
   return useQuery({
     ...homesQueryOptions(user?.id),
     select: (homes) => homes.find((home) => home.id === homeId) ?? null,
+  });
+};
+
+/**
+ * Creates a home with the signed-in user as its owner. `mutateAsync(name)`
+ * resolves with the new home's id once the homes list has refetched, so a
+ * screen opened with that id already finds the home in `useHome`.
+ */
+export const useCreateHome = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (name: string) => {
+      // `.throwOnError()` so a failure rejects with the PostgrestError itself
+      // and the screen can branch on its code (lib/postgrest-error.ts).
+      const { data } = await supabase.rpc("create_home", { p_name: name }).throwOnError();
+
+      return data;
+    },
+    // Home management is online-only. The default mode pauses a mutation
+    // started while offline: it would be saved to the paused queue with no
+    // registered `mutationFn` to replay it (docs/persistence.md), and the
+    // form's submit would never settle. "always" sends it regardless, so it
+    // fails at once and the form shows the error.
+    networkMode: "always",
+    // Returned, so the mutation stays pending until the refetch settles. A
+    // failed refetch does not reject: the home was still created.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.homes() }),
   });
 };
