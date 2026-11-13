@@ -4,8 +4,8 @@ import { Platform, Pressable, View } from "react-native";
 
 import type { BlockedAction } from "@/lib/blocked-reason";
 
+import { toastBlockedReason } from "@/hooks/use-blocked-guard";
 import { useBlockedReason } from "@/hooks/use-blocked-reason";
-import { toastInfo } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 type BlockedControlProps = {
@@ -23,6 +23,9 @@ type BlockedControlProps = {
  * tapped. The wrapper View is always there, so the child keeps its state when
  * blocking starts or stops. Wrap the whole row for a small control like a
  * checkbox, so the cover is easy to hit. See docs/connectivity.md.
+ *
+ * It covers only the control it wraps. Any other way of starting the same
+ * action, such as a keyboard's Done key, goes through `useBlockedGuard`.
  */
 export const BlockedControl = ({ action, label, className, children }: BlockedControlProps) => {
   const state = useBlockedReason(action);
@@ -43,7 +46,7 @@ export const BlockedControl = ({ action, label, className, children }: BlockedCo
           accessibilityLabel={Platform.OS === "web" ? `${label}. ${state.reason}` : label}
           accessibilityHint={state.reason}
           accessibilityState={Platform.OS === "android" ? undefined : { disabled: true }}
-          onPress={() => toastInfo(state.reason, `blocked:${state.reason}`)}
+          onPress={() => toastBlockedReason(state.reason)}
         />
       )}
     </View>
