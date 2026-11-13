@@ -228,10 +228,26 @@ describe("# useCreateHome", () => {
     onlineManager.setOnline(true);
   });
 
+  // TanStack tells React about a settled mutation one tick after `mutateAsync`
+  // itself settles. Waiting that tick inside `act` keeps the update from
+  // landing after `act` has closed, which React reports as a warning.
+  const inAct = async <T,>(run: () => Promise<T>) => {
+    let value: T | undefined;
+    await act(async () => {
+      try {
+        value = await run();
+      } finally {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    });
+
+    return value;
+  };
+
   it("calls the create_home RPC with the name", async () => {
     const { result } = renderHook(() => useCreateHome(), { wrapper });
 
-    await act(() => result.current.mutateAsync("Cabin"));
+    await inAct(() => result.current.mutateAsync("Cabin"));
 
     expect(mockRpc).toHaveBeenCalledWith("create_home", { p_name: "Cabin" });
   });
@@ -239,10 +255,7 @@ describe("# useCreateHome", () => {
   it("resolves with the new home's id", async () => {
     const { result } = renderHook(() => useCreateHome(), { wrapper });
 
-    let id: string | undefined;
-    await act(async () => {
-      id = await result.current.mutateAsync("Cabin");
-    });
+    const id = await inAct(() => result.current.mutateAsync("Cabin"));
 
     expect(id).toBe(NEW_HOME_ID);
   });
@@ -257,9 +270,14 @@ describe("# useCreateHome", () => {
     expect(result.current.list.data).toEqual([]);
 
     respondWith([row(NEW_HOME_ID, "Cabin", [{ user_id: ME, role: "owner" }])]);
-    await act(() => result.current.create.mutateAsync("Cabin"));
+    // Read inside `act`, at the moment `mutateAsync` resolves.
+    const listAtResolve = await inAct(async () => {
+      await result.current.create.mutateAsync("Cabin");
 
-    expect(client.getQueryData(queryKeys.homes())).toEqual([
+      return client.getQueryData(queryKeys.homes());
+    });
+
+    expect(listAtResolve).toEqual([
       { id: NEW_HOME_ID, name: "Cabin", description: null, memberCount: 1, role: "owner" },
     ]);
   });
@@ -272,10 +290,7 @@ describe("# useCreateHome", () => {
     await waitFor(() => expect(result.current.list.isSuccess).toBe(true));
 
     mockResult.mockRejectedValue(new Error("network down"));
-    let id: string | undefined;
-    await act(async () => {
-      id = await result.current.create.mutateAsync("Cabin");
-    });
+    const id = await inAct(() => result.current.create.mutateAsync("Cabin"));
 
     expect(id).toBe(NEW_HOME_ID);
   });
@@ -291,9 +306,7 @@ describe("# useCreateHome", () => {
 
     const { result } = renderHook(() => useCreateHome(), { wrapper });
 
-    await act(async () => {
-      await expect(result.current.mutateAsync("Cabin")).rejects.toBe(tooLong);
-    });
+    await inAct(() => expect(result.current.mutateAsync("Cabin")).rejects.toBe(tooLong));
   });
 
   // With the default network mode this would pause, be saved to the paused
@@ -302,7 +315,7 @@ describe("# useCreateHome", () => {
     onlineManager.setOnline(false);
     const { result } = renderHook(() => useCreateHome(), { wrapper });
 
-    await act(() => result.current.mutateAsync("Cabin"));
+    await inAct(() => result.current.mutateAsync("Cabin"));
 
     expect(mockRpc).toHaveBeenCalledTimes(1);
     expect(result.current.isPaused).toBe(false);
