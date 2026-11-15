@@ -2,10 +2,10 @@
 
 There are **two independent persistence layers**. They are easy to conflate; keep them separate.
 
-| Layer            | Stores                                                            | Backend                                                                                                                                                                   | Status                                                                                                                                       |
-| ---------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Auth session** | Supabase JWT + refresh token                                      | `LargeSecureStore` — AES-256 key in `expo-secure-store`, ciphertext in `@react-native-async-storage/async-storage`. Web: none (supabase-js falls back to `localStorage`). | **Done.** `apps/supplystash/lib/supabase.ts`. Near-verbatim from Supabase's Expo guide; deliberately not "optimized".                        |
-| **Query cache**  | Dehydrated TanStack Query cache + paused (offline) mutation queue | `expo-sqlite/kv-store` on native. Web: none — memory-only, refresh means refetch.                                                                                         | **Read cache wired** (STASH-35). **Paused-mutation queue wired** (STASH-36). **Boot restore gate** (STASH-37). **Sign-out wipe** (STASH-38). |
+| Layer            | Stores                                                            | Backend                                                                                                                                                                   | Status                                                                                                                                                                   |
+| ---------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Auth session** | Supabase JWT + refresh token                                      | `LargeSecureStore` — AES-256 key in `expo-secure-store`, ciphertext in `@react-native-async-storage/async-storage`. Web: none (supabase-js falls back to `localStorage`). | **Done.** `apps/supplystash/lib/supabase.ts`. Near-verbatim from Supabase's Expo guide; deliberately not "optimized".                                                    |
+| **Query cache**  | Dehydrated TanStack Query cache + paused (offline) mutation queue | `expo-sqlite/kv-store` on native. Web: none — memory-only, refresh means refetch.                                                                                         | **Read cache wired** (STASH-35). **Paused-mutation queue wired** (STASH-36). **Boot restore gate** (STASH-37). **Sign-out wipe** (STASH-38). **Owner check** (STASH-64). |
 
 ## Auth session (Project 1 — settled)
 
@@ -86,9 +86,9 @@ wrapped in `skipPersistAfterWipe` (see [Sign-out](#sign-out-built)).
 | [`lib/postgrest-error.ts`](../apps/supplystash/lib/postgrest-error.ts)                                   | `postgrestErrorCode(error)` for rejection handling.                                                                                 |
 
 - **Same database, different key.** The blob sits in `query-cache` under `paused-mutations`, next
-  to the read cache. The key must never start with
-  `tanstack-query-`: `restoreQueries` and `persisterGc` treat every key with that prefix as a
-  query row.
+  to the read cache. So does the owner check's `query-cache-owner` key (see
+  [Sign-out](#sign-out-built)). Neither may ever start with `tanstack-query-`: `restoreQueries`
+  and `persisterGc` treat every key with that prefix as a query row.
 - **Shared buster.** Bumping `SCHEMA_VERSION` or changing the allowlist also drops any queued
   check-offs on the next launch. Deliberate: a queued write against a reshaped row is not safe
   to replay.
@@ -148,13 +148,15 @@ The global default stays `mutations.retry: 0`. Retry policy for offline mutation
 wipe the next account's boot pass restores the previous one's rows, and `["homes"]` is not
 user-scoped, so it would show them the old account's homes.
 
-| File                                                                                   | Role                                                                                                                                                  |
-| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`state/session.tsx`](../apps/supplystash/state/session.tsx)                           | `SIGNED_OUT` handler: counts paused mutations, clears memory, starts the wipe, clears again after the boot pass, toasts.                              |
-| [`lib/query-cache-wipe.ts`](../apps/supplystash/lib/query-cache-wipe.ts)               | `removeQueries()` (no filters) on the read persister + `removeClient()` on the shared mutation persister. Never rejects. Also `skipPersistAfterWipe`. |
-| [`lib/query-cache-write-gate.ts`](../apps/supplystash/lib/query-cache-write-gate.ts)   | Read-cache storage wrapper: runs calls one at a time, drops writes from the wipe until the next `SIGNED_IN`.                                          |
-| [`hooks/use-sign-out.ts`](../apps/supplystash/hooks/use-sign-out.ts)                   | The deliberate flow: count queued changes, ask, sign out, toast. Ref-guarded against double presses.                                                  |
-| [`components/sign-out-button.tsx`](../apps/supplystash/components/sign-out-button.tsx) | Button + confirm dialog on that hook. Any screen that offers sign-out renders this, so the flow is not tied to one screen.                            |
+| File                                                                                             | Role                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`state/session.tsx`](../apps/supplystash/state/session.tsx)                                     | `SIGNED_OUT` handler: counts paused mutations, clears memory, starts the wipe, clears again after the boot pass, toasts.                              |
+| [`lib/query-cache-wipe.ts`](../apps/supplystash/lib/query-cache-wipe.ts)                         | `removeQueries()` (no filters) on the read persister + `removeClient()` on the shared mutation persister. Never rejects. Also `skipPersistAfterWipe`. |
+| [`lib/query-cache-write-gate.ts`](../apps/supplystash/lib/query-cache-write-gate.ts)             | Read-cache storage wrapper: runs calls one at a time, drops writes from the wipe until the next `SIGNED_IN`.                                          |
+| [`lib/query-cache-owner.native.ts`](../apps/supplystash/lib/query-cache-owner.native.ts)         | Owner check: `claimQueryCache` compares the stored owner with the signed-in user and wipes on a mismatch. Web stub: `lib/query-cache-owner.ts`.       |
+| [`hooks/use-is-query-cache-claimed.ts`](../apps/supplystash/hooks/use-is-query-cache-claimed.ts) | `useIsQueryCacheClaimed(userId)`: starts the claim when the user changes; `RootNavigator` and the splash wait on it.                                  |
+| [`hooks/use-sign-out.ts`](../apps/supplystash/hooks/use-sign-out.ts)                             | The deliberate flow: count queued changes, ask, sign out, toast. Ref-guarded against double presses.                                                  |
+| [`components/sign-out-button.tsx`](../apps/supplystash/components/sign-out-button.tsx)           | Button + confirm dialog on that hook. Any screen that offers sign-out renders this, so the flow is not tied to one screen.                            |
 
 - **One handler for every sign-out.** Supabase emits `SIGNED_OUT` for the button, a remote
   sign-out and a rejected refresh token alike, so all teardown lives in `state/session.tsx`, not
@@ -196,8 +198,29 @@ user-scoped, so it would show them the old account's homes.
   at a time, so a save already started finishes before `removeQueries` lists the rows. The
   counter above still matters for a fetch that outlives the next sign-in, when the gate is open
   again.
+- **The wipe can still fail or be cut short, so a sign-in checks who owns the cache (STASH-64).**
+  The sign-out wipe is not awaited or retried: the app killed mid-wipe, or a failed delete,
+  leaves rows on disk for the next launch's boot pass to restore. So the cache records its owner:
+  - `query-cache-owner` holds the user id the cached rows belong to, in the `query-cache` database.
+  - `RootNavigator` renders no screen for a signed-in user until `useIsQueryCacheClaimed` is true
+    for that user, and the splash waits on it at cold start. On a sign-in mid-session this is a
+    blank frame lasting one SQLite read, or a wipe when the account changed.
+  - The claim waits for the boot pass, then reads the owner. A match keeps everything. A mismatch,
+    a missing owner or an unreadable one clears memory, wipes disk, reopens the write gate, and
+    records the new owner only if the wipe succeeded, so a failed wipe is retried at the next
+    claim. Failures are reported as `query_cache_claim_failed` and never hold the screens.
+  - A missing owner wipes rather than adopting the rows: installs from before STASH-64 cannot say
+    whose rows they hold, so they refetch once.
+  - Claims run one at a time, so one that wipes finishes before the next reads the owner. The
+    gate is on rendering, not on `SessionProvider`, so a sign-out mid-claim needs no ordering: the
+    session goes null and the claim's result is dropped.
 - **Known gaps.**
-  - The app killed between sign-out and the wipe finishing leaves rows on disk, and the next
-    launch restores them. A stored owner user id, checked at boot and `SIGNED_IN`, would cover it.
   - Lazy restore could read a row if the next account signs in before the wipe finishes. The wipe
     is local SQLite and sign-in is a network round trip, so this is accepted.
+  - A wipe that fails during a claim leaves the old rows on disk while the new user carries on,
+    since sign-in cannot be blocked on it. Memory was cleared, but lazy restore reads a query's row
+    the first time it runs, so those screens can show the old account's data for that session.
+    The next claim, at the next sign-in or launch, wipes again. STASH-64 only asks for that; holding
+    the screens until a wipe succeeds would trade it for a user stuck on a blank screen.
+  - Paused mutations restored at boot can start replaying before the claim clears them. Replay
+    waits for the first network reading, so the claim usually wins, but nothing enforces it.
