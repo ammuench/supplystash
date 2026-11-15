@@ -69,7 +69,7 @@ describe("# wipeQueryCache", () => {
     seed(queryKeys.categories("home-1"), ["Pantry"], QUERY_CACHE_BUSTER);
     cache().set(PAUSED_MUTATIONS_KEY, JSON.stringify(queuedBlob()));
 
-    await wipe();
+    await expect(wipe()).resolves.toBe(true);
 
     expect(cache().size).toBe(0);
   });
@@ -110,7 +110,7 @@ describe("# wipeQueryCache", () => {
     jest.spyOn(queryCacheStorage, "entries").mockRejectedValueOnce(new Error("disk I/O error"));
     cache().set(PAUSED_MUTATIONS_KEY, JSON.stringify(queuedBlob()));
 
-    await expect(wipe()).resolves.toBeUndefined();
+    await expect(wipe()).resolves.toBe(false);
 
     expect(cache().has(PAUSED_MUTATIONS_KEY)).toBe(false);
     expect(capture).toHaveBeenCalledWith("query_cache_wipe_failed", { message: "disk I/O error" });
@@ -119,7 +119,7 @@ describe("# wipeQueryCache", () => {
   it("does nothing on web, where there are no persisters", async () => {
     const entries = jest.spyOn(queryCacheStorage, "entries");
 
-    await expect(wipeQueryCache(undefined, undefined)).resolves.toBeUndefined();
+    await expect(wipeQueryCache(undefined, undefined)).resolves.toBe(true);
 
     expect(entries).not.toHaveBeenCalled();
   });
