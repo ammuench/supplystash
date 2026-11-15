@@ -36,6 +36,10 @@ const mockIsQueryCacheRestored = jest.fn(() => true);
 jest.mock("@/lib/query-cache-restore", () => ({
   useIsQueryCacheRestored: () => mockIsQueryCacheRestored(),
 }));
+const mockIsQueryCacheClaimed = jest.fn((_userId: string | undefined) => true);
+jest.mock("@/hooks/use-is-query-cache-claimed", () => ({
+  useIsQueryCacheClaimed: (userId: string | undefined) => mockIsQueryCacheClaimed(userId),
+}));
 // utils/testing/setupTests.ts stubs expo-linking down to `createURL` for the
 // auth suites; the router needs the real module to subscribe to URLs.
 jest.mock("expo-linking", () => jest.requireActual("expo-linking"));
@@ -62,6 +66,7 @@ const routes = {
 beforeEach(() => {
   mockSessionStore.listeners.clear();
   mockIsQueryCacheRestored.mockReturnValue(true);
+  mockIsQueryCacheClaimed.mockReturnValue(true);
 });
 
 describe("# RootNavigator", () => {
@@ -104,6 +109,26 @@ describe("# RootNavigator", () => {
       renderRouter(routes, { initialUrl: "/" });
 
       expect(screen.queryByText("Inventory")).not.toBeOnTheScreen();
+    });
+
+    it("### renders nothing until the read cache is claimed for the signed-in user", () => {
+      // Until then the cache may hold another account's rows.
+      mockSessionStore.value = SIGNED_IN;
+      mockIsQueryCacheClaimed.mockReturnValue(false);
+
+      renderRouter(routes, { initialUrl: "/" });
+
+      expect(mockIsQueryCacheClaimed).toHaveBeenCalledWith("user-1");
+      expect(screen.queryByText("Inventory")).not.toBeOnTheScreen();
+    });
+
+    it("### signed out shows sign-in without waiting for a claim", () => {
+      mockSessionStore.value = SIGNED_OUT;
+      mockIsQueryCacheClaimed.mockReturnValue(false);
+
+      renderRouter(routes, { initialUrl: "/" });
+
+      expect(screen.getByText("Sign in")).toBeOnTheScreen();
     });
   });
 
