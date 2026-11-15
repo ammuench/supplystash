@@ -174,6 +174,18 @@ in [`BlockedControl`](../apps/supplystash/components/blocked-control.tsx); never
 - **Web check-off is blocked offline.** Web persists nothing, so a queued check-off would vanish
   on refresh (§5.4).
 - **The reason shows as a toast on tap.** `label` names the control while it is blocked.
+- **`BlockedControl` covers only the control it wraps.** Any other way of starting the same
+  action must go through `useBlockedGuard(action)`
+  ([`hooks/use-blocked-guard.ts`](../apps/supplystash/hooks/use-blocked-guard.ts)): a keyboard's
+  Done key on a form, a swipe, a deep link. `guard(run)` calls `run` when the action is allowed;
+  when it is blocked, it shows the same toast and does not call `run`.
+
+  ```tsx
+  const guard = useBlockedGuard("membership");
+  const submit = () => guard(() => void form.handleSubmit());
+  // <Input onSubmitEditing={submit} /> and <Button onPress={submit} />
+  ```
+
 - **Layout:** `className` styles the wrapper (`self-start`, `flex-1`). Wrap the whole row for a
   small control like a checkbox: the tap target is the wrapper's size.
 - **Fixture:** Settings → _Blocked controls_
