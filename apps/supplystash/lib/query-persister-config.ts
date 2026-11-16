@@ -31,5 +31,9 @@ export const QUERY_CACHE_BUSTER = `${SCHEMA_VERSION}:${PERSISTED_QUERY_ROOTS.joi
 // as a query row.
 export const PAUSED_MUTATIONS_KEY = "paused-mutations";
 
+// The user id the cache on disk belongs to. Same database and the same prefix
+// rule as the key above. See lib/query-cache-owner.native.ts.
+export const QUERY_CACHE_OWNER_KEY = "query-cache-owner";
+
 export const isPersistedQuery = (query: Query) =>
   (PERSISTED_QUERY_ROOTS as readonly unknown[]).includes(query.queryKey[0]);

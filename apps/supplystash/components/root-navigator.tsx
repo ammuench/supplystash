@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 
+import { useIsQueryCacheClaimed } from "@/hooks/use-is-query-cache-claimed";
 import { useIsQueryCacheRestored } from "@/lib/query-cache-restore";
 import { useSession } from "@/state/session";
 
@@ -10,12 +11,15 @@ import { useSession } from "@/state/session";
 export const RootNavigator = () => {
   const { session, isLoading } = useSession();
   const isQueryCacheRestored = useIsQueryCacheRestored();
+  const isQueryCacheClaimed = useIsQueryCacheClaimed(session?.user.id);
 
   // With no session read yet, the guards would mount sign-in and then swap to
   // the tabs. Until the read cache is restored, a screen could fetch and then
   // have its data overwritten by the restore pass. SplashScreenController
-  // keeps the splash up over this null.
-  if (isLoading || !isQueryCacheRestored) {
+  // keeps the splash up over this null. Until the cache is claimed for this
+  // user, it may hold another account's rows; on a sign-in this null lasts one
+  // SQLite read, or a wipe when the account changed.
+  if (isLoading || !isQueryCacheRestored || (session && !isQueryCacheClaimed)) {
     return null;
   }
 

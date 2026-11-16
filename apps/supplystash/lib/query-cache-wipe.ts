@@ -22,10 +22,14 @@ let wipes = 0;
 // `clearAsync()` on the database: that is queued behind any save still in
 // flight, which would otherwise land after the delete and put the old
 // account's changes back to replay under the new one.
+//
+// Resolves true when both halves were deleted. The owner check in
+// lib/query-cache-owner.native.ts only records a new owner then, so a failed
+// wipe is tried again at the next claim.
 export const wipeQueryCache = async (
   readPersister: QueryPersister | undefined,
   mutationPersister: Persister | undefined,
-) => {
+): Promise<boolean> => {
   wipes += 1;
   // Before the delete is queued, so a save TanStack schedules from here on is
   // dropped rather than landing after it. The next sign-in opens it again.
@@ -47,6 +51,8 @@ export const wipeQueryCache = async (
       });
     }
   }
+
+  return results.every((result) => result.status === "fulfilled");
 };
 
 // Both undefined on web, where nothing is persisted.
