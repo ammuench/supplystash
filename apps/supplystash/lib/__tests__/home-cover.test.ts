@@ -1,4 +1,6 @@
 import {
+  COVER_ALPHA,
+  COVER_HUE_OFFSET,
   COVER_HUE_STEP,
   deriveCoverColor,
   getHomeCoverKey,
@@ -55,9 +57,9 @@ describe("# home cover", () => {
   describe("## deriveCoverColor", () => {
     const base = parseColor(LIGHT_INFO)!;
 
-    it("returns a hex colour for every key", () => {
+    it("returns a hex colour with alpha for every key", () => {
       for (const key of HOME_COVER_KEYS) {
-        expect(deriveCoverColor(base, key)).toMatch(/^#[\da-f]{6}$/);
+        expect(deriveCoverColor(base, key)).toMatch(/^#[\da-f]{8}$/);
       }
     });
 
@@ -72,20 +74,25 @@ describe("# home cover", () => {
 
       // Loose: the hex round trip and sRGB clamping move the values a little.
       expect(derived.l).toBeCloseTo(base.l, 1);
-      expect(Math.abs(derived.h - ((base.h + COVER_HUE_STEP) % 360))).toBeLessThan(10);
+      expect(
+        Math.abs(derived.h - ((base.h + COVER_HUE_OFFSET + COVER_HUE_STEP) % 360)),
+      ).toBeLessThan(10);
     });
 
     it("wraps the hue past 360", () => {
-      // 262.881 + 2 × 60 is past 360.
-      const derived = parseColor(deriveCoverColor(base, 2))!;
+      // Low chroma so the result stays inside sRGB; at the info token's chroma,
+      // clamping a far-turned hue moves it by 20° or more.
+      const soft = { l: 0.7, c: 0.05, h: 300 };
+      const derived = parseColor(deriveCoverColor(soft, 2))!;
 
       expect(derived.h).toBeLessThan(360);
-      expect(Math.abs(derived.h - ((base.h + 2 * COVER_HUE_STEP) % 360))).toBeLessThan(10);
+      expect(
+        Math.abs(derived.h - ((soft.h + COVER_HUE_OFFSET + 2 * COVER_HUE_STEP) % 360)),
+      ).toBeLessThan(5);
     });
 
-    it("gives key 0 back as the base colour", () => {
-      // A hex base survives the round trip exactly.
-      expect(deriveCoverColor(parseColor("#3366cc")!, 0)).toBe("#3366cc");
+    it("appends the cover alpha", () => {
+      expect(deriveCoverColor(base, 0).slice(7)).toBe(COVER_ALPHA);
     });
   });
 });

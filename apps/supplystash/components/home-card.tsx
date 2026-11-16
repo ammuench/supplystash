@@ -1,32 +1,44 @@
-import { HouseIcon } from "lucide-react-native";
 import { View } from "react-native";
-import { useCSSVariable } from "uniwind";
 
 import type { Home } from "@/state/homes";
 
-import { Icon } from "@/components/ui/icon";
+import { Badge } from "@/components/ui/badge";
 import { PressableSurface } from "@/components/ui/pressable-surface";
 import { Text } from "@/components/ui/text";
+import { useHomeCoverColor } from "@/hooks/use-home-cover-color";
 import { cn } from "@/lib/utils";
 
-// A 36pt rounded square with a grey wash. Every home gets the same house icon
-// for now; a chosen icon and colour land in STASH-65.
-const HomeIconTile = () => {
-  // Passed as a prop: a color class on the icon did not apply on web (see
-  // components/tab-bar-icons.tsx).
-  const color = useCSSVariable("--color-muted-foreground");
+// Colour wash with the home's first letter. No image yet; the colour comes
+// from the home's id (lib/home-cover.ts), so it is the same on every device.
+const HomeCover = ({ home }: { home: Home }) => {
+  const backgroundColor = useHomeCoverColor(home.id);
 
   return (
     <View
-      className="size-9 items-center justify-center rounded-lg bg-muted"
-      // iOS draws the corners as a continuous curve (a squircle). Other
-      // platforms ignore it and keep the plain rounded corners.
-      style={{ borderCurve: "continuous" }}
+      // `bg-muted` shows only if the cover colour could not be derived.
+      className="h-24 items-center justify-center rounded-md bg-muted"
+      style={[{ borderCurve: "continuous" }, backgroundColor ? { backgroundColor } : null]}
     >
-      <Icon as={HouseIcon} size={20} color={typeof color === "string" ? color : undefined} />
+      <Text className="text-4xl font-bold text-foreground">
+        {home.name.trim().charAt(0).toUpperCase()}
+      </Text>
     </View>
   );
 };
+
+const PILL_CLASSES = {
+  info: { badge: "bg-info", text: "text-info-foreground" },
+  warning: { badge: "bg-warning", text: "text-warning-foreground" },
+  destructive: { badge: "bg-destructive", text: "text-destructive-foreground" },
+} as const;
+
+// Static and not tappable. Every count is 0 until STASH-55 adds the stock
+// summary counts.
+const StatPill = ({ tone, label }: { tone: keyof typeof PILL_CLASSES; label: string }) => (
+  <Badge className={cn("border-transparent", PILL_CLASSES[tone].badge)}>
+    <Text className={PILL_CLASSES[tone].text}>0 {label}</Text>
+  </Badge>
+);
 
 export type HomeCardProps = {
   home: Home;
@@ -36,9 +48,7 @@ export type HomeCardProps = {
 };
 
 /**
- * One home in a list: its icon, name, member count and the signed-in user's
- * role. Draft UI; the cover area and stat pills from the design land in
- * STASH-56.
+ * One home in a list: its cover, name, member count and stock pills.
  *
  * @component
  * @example
@@ -50,17 +60,20 @@ export const HomeCard = ({ home, onPress, className }: HomeCardProps) => (
   <PressableSurface
     role="link"
     aria-label={home.name}
-    // Three direct children, so the one `gap` spaces the tile, the name and
-    // the details line equally.
-    className={cn("gap-2 rounded-lg border border-border p-4", className)}
+    className={cn("gap-3 rounded-lg border border-border p-3", className)}
     onPress={onPress}
   >
-    <HomeIconTile />
-    <Text className="text-lg leading-tight font-semibold">{home.name}</Text>
-    <Text className="text-sm leading-tight text-muted-foreground">
-      Members: {home.memberCount} · Your role:{" "}
-      {/* The stored role is lowercase (`owner`); capitalized for display only. */}
-      <Text className="text-sm leading-tight text-muted-foreground capitalize">{home.role}</Text>
-    </Text>
+    <HomeCover home={home} />
+    <View className="gap-1">
+      <Text className="text-lg leading-tight font-semibold">{home.name}</Text>
+      <Text className="text-sm leading-tight text-muted-foreground">
+        {home.memberCount} {home.memberCount === 1 ? "member" : "members"}
+      </Text>
+    </View>
+    <View className="flex-row flex-wrap gap-2">
+      <StatPill tone="info" label="In stock" />
+      <StatPill tone="warning" label="Low" />
+      <StatPill tone="destructive" label="Out" />
+    </View>
   </PressableSurface>
 );

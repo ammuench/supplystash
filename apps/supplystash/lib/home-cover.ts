@@ -11,6 +11,7 @@
  *   the blue "In stock" pill, which uses the same base token).
  * - Softer or stronger wash: `COVER_LIGHTNESS_SHIFT` (0–1 oklch lightness,
  *   added) and `COVER_CHROMA_SCALE` (multiplied).
+ * - Tint or solid: `COVER_ALPHA` is the opacity over the card (`"ff"` = solid).
  * - More or fewer covers: change `HOME_COVER_KEYS`. Existing homes then move
  *   to a new colour, since the pick is the id hash modulo the list length.
  * - Fixed, designer-picked colours (STASH-65 may want this): add
@@ -20,9 +21,12 @@
 
 export const COVER_BASE_TOKEN = "--color-info";
 export const COVER_HUE_STEP = 60;
-export const COVER_HUE_OFFSET = 0;
+export const COVER_HUE_OFFSET = 30;
 export const COVER_LIGHTNESS_SHIFT = 0;
 export const COVER_CHROMA_SCALE = 1;
+// Hex alpha appended to the colour: "40" is about 25%, so the card shows
+// through and the letter stays readable in both themes. "ff" for solid.
+export const COVER_ALPHA = "40";
 
 /** The cover slots. STASH-65 stores one of these as a home's chosen colour. */
 export const HOME_COVER_KEYS = [0, 1, 2, 3, 4, 5] as const;
@@ -107,10 +111,10 @@ export const parseColor = (value: string | undefined): Oklch | null => {
   return null;
 };
 
-/** The cover colour for `key`, as `#rrggbb` (native styles do not take oklch). */
+/** The cover colour for `key`, as `#rrggbbaa` (native styles do not take oklch). */
 export const deriveCoverColor = (base: Oklch, key: HomeCoverKey): string =>
   oklchToHex({
     l: Math.min(1, Math.max(0, base.l + COVER_LIGHTNESS_SHIFT)),
     c: base.c * COVER_CHROMA_SCALE,
     h: (((base.h + COVER_HUE_OFFSET + key * COVER_HUE_STEP) % 360) + 360) % 360,
-  });
+  }) + COVER_ALPHA;
