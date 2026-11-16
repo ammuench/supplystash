@@ -50,20 +50,22 @@ export const claimQueryCache = async ({
   // Memory first: the boot pass may already have restored the rows, and this
   // also drops restored paused mutations that have not replayed yet.
   client.clear();
-  const isWiped = await wipe();
-  // The wipe closes the read cache to writes, and this user is signed in.
-  openQueryCacheWrites();
-
-  // Only once the rows are gone. After a failed wipe the old owner stays, so
-  // the next claim, at the next sign-in or launch, wipes again. The wipe
-  // reports its own failure.
-  if (isWiped) {
-    await storage.setItem(QUERY_CACHE_OWNER_KEY, userId);
+  // The wipe closes the read cache to writes and reports its own failure.
+  if (!(await wipe())) {
+    // Writes stay closed and the old owner stays recorded, so the next claim,
+    // at the next sign-in or launch, wipes again. Reopening here would save
+    // this user's rows under the old owner, whose next launch would match and
+    // restore them.
+    return;
   }
+
+  openQueryCacheWrites();
+  await storage.setItem(QUERY_CACHE_OWNER_KEY, userId);
 };
 
 // Waits for the boot pass, or its writes to memory would land after the clear.
-// Never rejects: SessionProvider holds the splash on it.
+// Never rejects: RootNavigator and the splash wait on it, through
+// hooks/use-is-query-cache-claimed.ts.
 export const claimAppQueryCache = async (userId: string) => {
   await queryCacheRestored;
 

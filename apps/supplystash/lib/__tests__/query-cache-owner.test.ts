@@ -160,6 +160,24 @@ describe("# claimQueryCache", () => {
     });
   });
 
+  describe("## after a failed wipe", () => {
+    it("keeps the new account's fetches off disk, under the old owner", async () => {
+      // Saved now, they would sit under owner A, and A's next launch would
+      // match and restore them.
+      cache().set(QUERY_CACHE_OWNER_KEY, ACCOUNT_A);
+
+      const client = await boot(ACCOUNT_B, { wipeFails: true });
+      await client.fetchQuery({
+        queryKey: queryKeys.homes(),
+        queryFn: async () => ["Account B's home"],
+      });
+      await flushSave();
+
+      expect(cache().has(storageKey(queryKeys.homes()))).toBe(false);
+      expect(cache().get(QUERY_CACHE_OWNER_KEY)).toBe(ACCOUNT_A);
+    });
+  });
+
   describe("## after a mismatch", () => {
     it("lets the new account's fetches reach disk again", async () => {
       // The wipe closes the write gate; the claim runs for a signed-in user.

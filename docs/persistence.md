@@ -206,12 +206,17 @@ user-scoped, so it would show them the old account's homes.
     for that user, and the splash waits on it at cold start. On a sign-in mid-session this is a
     blank frame lasting one SQLite read, or a wipe when the account changed.
   - The claim waits for the boot pass, then reads the owner. A match keeps everything. A mismatch,
-    a missing owner or an unreadable one clears memory, wipes disk, reopens the write gate, and
-    records the new owner only if the wipe succeeded, so a failed wipe is retried at the next
-    claim. Failures are reported as `query_cache_claim_failed` and never hold the screens.
+    a missing owner or an unreadable one clears memory and wipes disk. Only if the wipe succeeded
+    does it reopen the write gate and record the new owner. After a failed wipe both stay as they
+    were: this user's rows are kept in memory only, never saved under the old owner (whose next
+    launch would match and restore them), and the next claim wipes again. Failures are reported
+    as `query_cache_claim_failed` and never hold the screens.
   - A missing owner wipes rather than adopting the rows: installs from before STASH-64 cannot say
     whose rows they hold, so they refetch once.
-  - Claims run one at a time, so one that wipes finishes before the next reads the owner. The
+  - Claims run one at a time, so one that wipes finishes before the next reads the owner. Only
+    the latest request marks the cache claimed: after A → B → A mid-claim, the first A claim
+    finishing does not open the screens while the queued claims, which clear the cache, still
+    have to run. The
     gate is on rendering, not on `SessionProvider`, so a sign-out mid-claim needs no ordering: the
     session goes null and the claim's result is dropped.
 - **Known gaps.**
@@ -220,7 +225,8 @@ user-scoped, so it would show them the old account's homes.
   - A wipe that fails during a claim leaves the old rows on disk while the new user carries on,
     since sign-in cannot be blocked on it. Memory was cleared, but lazy restore reads a query's row
     the first time it runs, so those screens can show the old account's data for that session.
-    The next claim, at the next sign-in or launch, wipes again. STASH-64 only asks for that; holding
+    Nothing is saved for the new user meanwhile. The next claim, at the next sign-in or launch,
+    wipes again. STASH-64 only asks for that; holding
     the screens until a wipe succeeds would trade it for a user stuck on a blank screen.
   - Paused mutations restored at boot can start replaying before the claim clears them. Replay
     waits for the first network reading, so the claim usually wins, but nothing enforces it.

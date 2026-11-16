@@ -12,6 +12,11 @@ import { claimAppQueryCache } from "@/lib/query-cache-owner";
 
 let requested: string | null = null;
 let claimedFor: string | null = null;
+// Bumped by every request. A claim only marks the cache claimed if no request
+// came after it: after A → B → A, the first A claim finishing must not open
+// the gate while B's and the second A's claims (which clear the cache) are
+// still queued. Never reset, so a claim from before a test reset cannot match.
+let generation = 0;
 const listeners = new Set<() => void>();
 
 // One at a time: a claim that wipes must finish before the next one reads the
@@ -30,6 +35,8 @@ const request = (userId: string | null) => {
   }
 
   requested = userId;
+  generation += 1;
+  const thisRequest = generation;
   // Signing out, or switching user, drops the old claim at once. The same
   // user signing back in claims again: one read when nothing changed.
   setClaimedFor(null);
@@ -41,7 +48,7 @@ const request = (userId: string | null) => {
     .then(() => claimAppQueryCache(userId))
     .then(() => {
       // A sign-out or another sign-in while this ran has moved on.
-      if (requested === userId) {
+      if (generation === thisRequest) {
         setClaimedFor(userId);
       }
     });

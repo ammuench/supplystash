@@ -117,6 +117,29 @@ describe("# useIsQueryCacheClaimed", () => {
       expect(claimCache).toHaveBeenLastCalledWith(ACCOUNT_B);
     });
 
+    it("waits for the last claim when the same user returns mid-claim", async () => {
+      // A → B → A: the first A claim finishing must not open the gate while
+      // the queued claims, which clear the cache, have yet to run.
+      const releaseFirst = holdClaim();
+      const { result, rerender } = renderClaim(ACCOUNT_A);
+      rerender({ id: undefined });
+      rerender({ id: ACCOUNT_B });
+      rerender({ id: undefined });
+      // B's claim settles at once; the second A claim is held.
+      claimCache.mockResolvedValueOnce(undefined);
+      const releaseLast = holdClaim();
+      rerender({ id: ACCOUNT_A });
+
+      await releaseFirst();
+
+      expect(result.current).toBe(false);
+
+      await releaseLast();
+
+      expect(claimCache).toHaveBeenCalledTimes(3);
+      expect(result.current).toBe(true);
+    });
+
     it("stays false while a sign-out lands mid-claim", async () => {
       const releaseClaim = holdClaim();
       const { result, rerender } = renderClaim(ACCOUNT_A);
