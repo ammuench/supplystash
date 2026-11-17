@@ -2,6 +2,7 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect } from "react";
 
 import { AppSafeScreen } from "@/components/app-safe-screen";
+import { HomeDetails } from "@/components/home-details";
 import { Text } from "@/components/ui/text";
 import { useActiveHomeStore } from "@/state/active-home.store";
 import { useHome } from "@/state/homes";
@@ -36,10 +37,7 @@ export default function HomeDetailsScreen() {
         {home ? (
           <>
             <Text className="text-xl font-semibold">{home.name}</Text>
-            <Text>Members: {home.memberCount}</Text>
-            <Text>
-              Your role: <Text className="capitalize">{home.role}</Text>
-            </Text>
+            <HomeDetails home={home} />
           </>
         ) : null}
       </AppSafeScreen>

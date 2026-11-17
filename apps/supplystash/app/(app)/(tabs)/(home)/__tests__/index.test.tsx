@@ -135,6 +135,28 @@ describe("# HomeScreen", () => {
     });
   });
 
+  describe("## one home", () => {
+    beforeEach(() => mockUseHomes.mockReturnValue(homesResult({ data: [HOMES[1]] })));
+
+    it("shows that home in place of the list", () => {
+      renderScreen();
+
+      expect(screen.getByText("Lake House")).toBeOnTheScreen();
+      expect(screen.getByText("Members: 3")).toBeOnTheScreen();
+      expect(screen.queryByText("Homes")).not.toBeOnTheScreen();
+      expect(screen.queryByRole("link", { name: "Lake House" })).not.toBeOnTheScreen();
+    });
+
+    it("keeps Add, so a second home can be made", async () => {
+      const user = userEvent.setup();
+      renderScreen();
+
+      await user.press(screen.getByRole("button", { name: "Add" }));
+
+      expect(router.push).toHaveBeenCalledWith("/homes/new");
+    });
+  });
+
   describe("## homes", () => {
     beforeEach(() => mockUseHomes.mockReturnValue(homesResult({ data: HOMES })));
 
