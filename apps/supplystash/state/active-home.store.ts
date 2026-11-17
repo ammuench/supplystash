@@ -45,6 +45,19 @@ export const useActiveHomeStore = create<ActiveHomeState>()(
     (set) => ({
       owner: null,
       homeId: null,
+      // Known race, left unguarded on purpose (PR #34 review). The stored
+      // value is read once, async, at launch. A setter that runs before that
+      // read finishes is overwritten by it, and the old value is saved back.
+      // No caller can do that today: `[homeId].tsx` renders only after the
+      // session and cache-claim gates, and the sign-out clear waits on the
+      // session read plus a network call. Both start later and take longer.
+      // The owner check in useActiveHome keeps it from crossing accounts.
+      //
+      // Symptom, if a new caller ever runs before those gates: a home the
+      // user just opened is replaced by the one they had open before, or a
+      // home comes back after the same user signs out and in again. Fix: pass a `merge` to
+      // `persist` that keeps the in-memory value when a setter ran before
+      // hydration.
       setActiveHome: (userId, homeId) => set({ owner: userId, homeId }),
       clearActiveHome: () => set({ owner: null, homeId: null }),
     }),
