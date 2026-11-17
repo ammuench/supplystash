@@ -8,6 +8,7 @@ import { openQueryCacheWrites } from "@/lib/query-cache-write-gate";
 import { countPausedMutations, queryClient } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
 import { toastInfo } from "@/lib/toast";
+import { useActiveHomeStore } from "@/state/active-home.store";
 import {
   SESSION_EXPIRED_MESSAGE,
   SessionProvider,
@@ -167,6 +168,17 @@ describe("# SessionProvider", () => {
     act(() => emit("SIGNED_OUT", null));
 
     expect(clearCache).toHaveBeenCalledTimes(1);
+  });
+
+  it("forgets the active home on sign-out", async () => {
+    useActiveHomeStore.getState().setActiveHome(USER.id, "home-1");
+    auth.getSession.mockResolvedValue({ data: { session: SESSION } } as never);
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.session).toBe(SESSION));
+
+    act(() => emit("SIGNED_OUT", null));
+
+    expect(useActiveHomeStore.getState()).toMatchObject({ owner: null, homeId: null });
   });
 
   it("clears the cache again once the boot pass settles, so its late writes do not survive sign-out", async () => {
