@@ -60,6 +60,8 @@ say so before running it.
 ## Data
 
 - Query keys come from `state/query-keys.ts`. Never inline a key array.
+- A zustand store's file ends in `.store.ts` (`state/active-home.store.ts`) and exports
+  `use<Name>Store`, so a store export can't be mistaken for a plain hook.
 - Hooks live in `state/`. Call supabase-js with `.throwOnError()` so the `PostgrestError` reaches
   the caller, and branch on its code with `lib/postgrest-error.ts`, never on message text.
 - Home and membership writes are online-only: go through an RPC, set `networkMode: "always"`, and
