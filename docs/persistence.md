@@ -1,11 +1,12 @@
 # Persistence
 
-There are **two independent persistence layers**. They are easy to conflate; keep them separate.
+There are **three independent persistence layers**. They are easy to conflate; keep them separate.
 
 | Layer            | Stores                                                            | Backend                                                                                                                                                                   | Status                                                                                                                                                                   |
 | ---------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Auth session** | Supabase JWT + refresh token                                      | `LargeSecureStore` — AES-256 key in `expo-secure-store`, ciphertext in `@react-native-async-storage/async-storage`. Web: none (supabase-js falls back to `localStorage`). | **Done.** `apps/supplystash/lib/supabase.ts`. Near-verbatim from Supabase's Expo guide; deliberately not "optimized".                                                    |
 | **Query cache**  | Dehydrated TanStack Query cache + paused (offline) mutation queue | `expo-sqlite/kv-store` on native. Web: none — memory-only, refresh means refetch.                                                                                         | **Read cache wired** (STASH-35). **Paused-mutation queue wired** (STASH-36). **Boot restore gate** (STASH-37). **Sign-out wipe** (STASH-38). **Owner check** (STASH-64). |
+| **Active home**  | The id of the home the user last opened, and who opened it        | `@react-native-async-storage/async-storage`. Web: `localStorage`, through the same package.                                                                               | **Done** (STASH-59). `apps/supplystash/state/active-home.store.ts`.                                                                                                      |
 
 ## Auth session (Project 1 — settled)
 
@@ -230,3 +231,20 @@ user-scoped, so it would show them the old account's homes.
     the screens until a wipe succeeds would trade it for a user stuck on a blank screen.
   - Paused mutations restored at boot can start replaying before the claim clears them. Replay
     waits for the first network reading, so the claim usually wins, but nothing enforces it.
+
+## Active home (STASH-59)
+
+One small value: `{ owner, homeId }`, saved by `useActiveHomeStore` in
+[`state/active-home.store.ts`](../apps/supplystash/state/active-home.store.ts). Screens read it
+through `useActiveHome()` in [`state/active-home.ts`](../apps/supplystash/state/active-home.ts).
+
+- **Set when a home is opened:** `homes/[homeId].tsx`, once `useHome` confirms the user is a member.
+- **Resolved at read time.** The stored id counts only when `owner` is the signed-in user and the id
+  is in the homes list. A stale or foreign id is ignored, not cleared, so the hook only reads.
+  With no valid id and exactly one home, that home is active, but it is not saved.
+- **Cleared on sign-out** in the `SIGNED_OUT` handler in `state/session.tsx`. The owner check
+  covers a clear that never ran (the app was killed, say).
+- **AsyncStorage, not the `query-cache` database.** The restore pass treats every key there as a
+  query row. An unreadable value counts as no active home, so the hook never stays loading.
+- **The splash does not wait for it.** `useActiveHome()` reports `isLoading` instead; the Home tab
+  never needs the value.
