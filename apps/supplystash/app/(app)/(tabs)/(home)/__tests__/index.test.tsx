@@ -4,7 +4,7 @@ import { router } from "expo-router";
 
 import type { Home } from "@/state/homes";
 
-import HomeScreen from "@/app/(app)/(tabs)/index";
+import HomeScreen from "@/app/(app)/(tabs)/(home)/index";
 import { toastInfo } from "@/lib/toast";
 import { useHomes } from "@/state/homes";
 

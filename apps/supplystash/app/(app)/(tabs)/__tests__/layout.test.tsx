@@ -34,15 +34,41 @@ jest.mock("expo-linking", () => jest.requireActual("expo-linking"));
 const routes = {
   _layout: () => <Stack screenOptions={{ headerShown: false }} />,
   "(tabs)/_layout": TabsLayout,
-  "(tabs)/index": () => <Text>Home screen</Text>,
+  "(tabs)/(home)/_layout": () => <Stack screenOptions={{ headerShown: false }} />,
+  "(tabs)/(home)/index": () => <Text>Home screen</Text>,
+  "(tabs)/(home)/homes/[homeId]": () => <Text>Home details screen</Text>,
   "(tabs)/lists": () => <Text>Lists screen</Text>,
   "(tabs)/add": AddTabRoute,
   "(tabs)/settings": () => <Text>Settings screen</Text>,
   "(tabs)/account": () => <Text>Account screen</Text>,
   "add-item": () => <Text>Add Item screen</Text>,
+  "homes/new": () => <Text>New home screen</Text>,
 };
 
 describe("# TabsLayout", () => {
+  describe("## home tab", () => {
+    it("### an opened home keeps the tab bar", () => {
+      const view = renderRouter(routes, { initialUrl: "/" });
+
+      act(() => router.push("/homes/home-1"));
+
+      expect(view.getPathname()).toBe("/homes/home-1");
+      expect(screen.getByText("Home details screen")).toBeOnTheScreen();
+      expect(screen.getByText("Lists")).toBeOnTheScreen();
+    });
+
+    // `/homes/new` sits outside the tabs and `/homes/[homeId]` inside them,
+    // under the same URL prefix. The static route must still win.
+    it("### the create form is not mistaken for a home id", () => {
+      renderRouter(routes, { initialUrl: "/" });
+
+      act(() => router.push("/homes/new"));
+
+      expect(screen.getByText("New home screen")).toBeOnTheScreen();
+      expect(screen.queryByText("Lists")).not.toBeOnTheScreen();
+    });
+  });
+
   describe("## add item", () => {
     it("### pressing the center slot pushes the add-item screen", () => {
       const view = renderRouter(routes, { initialUrl: "/lists" });
