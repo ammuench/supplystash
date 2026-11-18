@@ -4,6 +4,7 @@ import { ScrollView, View } from "react-native";
 import { AppSafeScreen } from "@/components/app-safe-screen";
 import { BlockedControl } from "@/components/blocked-control";
 import { HomeCard } from "@/components/home-card";
+import { HomeDetails } from "@/components/home-details";
 import { HomesEmptyState } from "@/components/homes-empty-state";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,12 +34,17 @@ export default function HomeScreen() {
   // The empty state has its own setup card, so Add shows only above a list,
   // or above the skeletons that stand in for one.
   const showAdd = isPending || hasHomes;
+  // With one home there is nothing to pick, so the tab is that home's page.
+  // Counted from the list, not the active home: a second home brings the list
+  // back whichever home is active. Add stays, or a second home could never be
+  // made.
+  const onlyHome = homes?.length === 1 ? homes[0] : undefined;
 
   return (
     <AppSafeScreen className="gap-4 p-4">
       {/* Outside the scroller, so the title and Add stay at the top. */}
       <View className="flex-row items-center justify-between">
-        <Text className="text-xl font-semibold">Homes</Text>
+        <Text className="text-xl font-semibold">{onlyHome ? onlyHome.name : "Homes"}</Text>
         {showAdd ? (
           <BlockedControl action="membership" label="Add home">
             {(blocked) => (
@@ -52,42 +58,46 @@ export default function HomeScreen() {
         ) : null}
       </View>
 
-      <ScrollView
-        className="flex-1"
-        scrollEnabled={!isPending}
-        // Skeletons and cards are top-aligned, so one replaces the other in
-        // place. Only the empty state and the error message center, using
-        // `flex-grow` to fill the space under the title.
-        contentContainerClassName={
-          isPending || hasHomes ? "gap-4 pb-4" : "flex-grow justify-center"
-        }
-      >
-        {isPending ? (
-          <LoadingCards />
-        ) : hasHomes ? (
-          homes.map((home) => (
-            <HomeCard
-              key={home.id}
-              home={home}
-              onPress={() =>
-                router.push({ pathname: "/homes/[homeId]", params: { homeId: home.id } })
-              }
-            />
-          ))
-        ) : isError ? (
-          // The offline and unreachable bars already say why; this only says what.
-          <View className="items-center gap-3">
-            <Text className="text-center text-destructive">Couldn&apos;t load your homes.</Text>
-            {/* A read, not a write, so no BlockedControl: offline, TanStack
+      {onlyHome ? (
+        <HomeDetails home={onlyHome} />
+      ) : (
+        <ScrollView
+          className="flex-1"
+          scrollEnabled={!isPending}
+          // Skeletons and cards are top-aligned, so one replaces the other in
+          // place. Only the empty state and the error message center, using
+          // `flex-grow` to fill the space under the title.
+          contentContainerClassName={
+            isPending || hasHomes ? "gap-4 pb-4" : "flex-grow justify-center"
+          }
+        >
+          {isPending ? (
+            <LoadingCards />
+          ) : hasHomes ? (
+            homes.map((home) => (
+              <HomeCard
+                key={home.id}
+                home={home}
+                onPress={() =>
+                  router.push({ pathname: "/homes/[homeId]", params: { homeId: home.id } })
+                }
+              />
+            ))
+          ) : isError ? (
+            // The offline and unreachable bars already say why; this only says what.
+            <View className="items-center gap-3">
+              <Text className="text-center text-destructive">Couldn&apos;t load your homes.</Text>
+              {/* A read, not a write, so no BlockedControl: offline, TanStack
                 Query holds the retry and runs it on reconnect. */}
-            <Button variant="outline" disabled={isFetching} onPress={() => void refetch()}>
-              <Text>{isFetching ? "Retrying…" : "Retry"}</Text>
-            </Button>
-          </View>
-        ) : (
-          <HomesEmptyState onCreate={openCreateHome} />
-        )}
-      </ScrollView>
+              <Button variant="outline" disabled={isFetching} onPress={() => void refetch()}>
+                <Text>{isFetching ? "Retrying…" : "Retry"}</Text>
+              </Button>
+            </View>
+          ) : (
+            <HomesEmptyState onCreate={openCreateHome} />
+          )}
+        </ScrollView>
+      )}
     </AppSafeScreen>
   );
 }

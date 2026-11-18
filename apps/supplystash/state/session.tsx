@@ -10,6 +10,7 @@ import { openQueryCacheWrites } from "@/lib/query-cache-write-gate";
 import { countPausedMutations, queryClient } from "@/lib/query-client";
 import { supabase } from "@/lib/supabase";
 import { toastInfo } from "@/lib/toast";
+import { useActiveHomeStore } from "@/state/active-home.store";
 
 // Exported so the test asserts on the same string the user reads.
 export const SESSION_EXPIRED_MESSAGE = "Your session expired — please sign in again.";
@@ -56,6 +57,10 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
         // sign-out already confirmed this loss in the settings screen.
         const discarded = countPausedMutations(queryClient);
         queryClient.clear();
+        // The owner check in useActiveHome already hides this id from the next
+        // account. Clearing it too means a later sign-in as the same user starts
+        // from the homes list, not from a home picked by a previous session.
+        useActiveHomeStore.getState().clearActiveHome();
         // `clear()` only empties memory; the next account's boot pass would
         // restore these rows from disk. Started now rather than after the boot
         // pass: the pass reads every row up front, so deleting them mid-pass

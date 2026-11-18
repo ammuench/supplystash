@@ -25,8 +25,9 @@ Origin: `supply-stash-architecture.md` §5.3.
    the current user belongs to. These omit `homeId` and must carry a comment in the factory
    saying why they are not home-scoped.
 
-5. **`enabled: !!homeId`** on every home-scoped query. `homeId` is `undefined` until the active
-   home resolves.
+5. **`enabled: !!homeId`** on every home-scoped query. Take `homeId` from `useActiveHome()`
+   (`state/active-home.ts`). It is `undefined` until the active home resolves, and stays
+   `undefined` when there is none.
 
 6. **Persistence allowlist (Project 4).** Only `items`, `categories`, `shoppingList`, and
    `homes` keys are persisted to disk. Everything else — history modal, barcode lookups — is

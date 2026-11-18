@@ -46,7 +46,7 @@ export default function TabsLayout() {
         tabBarIconStyle: TAB_BAR_ICON_STYLE,
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: HomeTabIcon }} />
+      <Tabs.Screen name="(home)" options={{ title: "Home", tabBarIcon: HomeTabIcon }} />
       <Tabs.Screen name="lists" options={{ title: "Lists", tabBarIcon: ListsTabIcon }} />
       <Tabs.Screen
         name="add"
