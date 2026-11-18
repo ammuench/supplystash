@@ -48,10 +48,12 @@ export const useActiveHomeStore = create<ActiveHomeState>()(
       // Known race, left unguarded on purpose (PR #34 review). The stored
       // value is read once, async, at launch. A setter that runs before that
       // read finishes is overwritten by it, and the old value is saved back.
-      // No caller can do that today: `[homeId].tsx` renders only after the
-      // session and cache-claim gates, and the sign-out clear waits on the
-      // session read plus a network call. Both start later and take longer.
-      // The owner check in useActiveHome keeps it from crossing accounts.
+      // Nothing orders the callers after that read; timing does.
+      // `[homeId].tsx` renders only after the session and cache-claim gates,
+      // and the sign-out clear waits on the session read plus a network call.
+      // Both start later and take longer, so this needs an unusually slow
+      // read. The owner check in useActiveHome keeps it from crossing
+      // accounts, but not from returning a stale home to the same user.
       //
       // Symptom, if a new caller ever runs before those gates: a home the
       // user just opened is replaced by the one they had open before, or a
