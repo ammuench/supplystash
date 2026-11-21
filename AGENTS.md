@@ -9,6 +9,9 @@ and this file links to them.
 - Monorepo. The app is `apps/supplystash/` (Expo, expo-router, Uniwind, TanStack Query, Supabase).
 - Database: `supabase/migrations/` and pgTAP tests in `supabase/tests/`.
 - Import with the `@/` alias, which points at `apps/supplystash/`.
+- Reanimated and worklets are newer than Expo's pinned versions, for stable shared element transitions,
+  so `expo.install.exclude` in the app's `package.json` skips them. Remove the exclusion once Expo
+  pins Reanimated 4.8 or later (STASH-72).
 
 ## Commands
 
