@@ -142,7 +142,7 @@ describe("# HomeScreen", () => {
       renderScreen();
 
       expect(screen.getByText("Lake House")).toBeOnTheScreen();
-      expect(screen.getByText("Members: 3")).toBeOnTheScreen();
+      expect(screen.getByText("3 members")).toBeOnTheScreen();
       expect(screen.queryByText("Homes")).not.toBeOnTheScreen();
       expect(screen.queryByRole("link", { name: "Lake House" })).not.toBeOnTheScreen();
     });
