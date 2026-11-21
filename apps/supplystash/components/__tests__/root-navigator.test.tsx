@@ -56,7 +56,7 @@ const routes = {
   "(app)/index": () => <Text>Inventory</Text>,
   "(auth)/_layout": {
     default: GroupLayout,
-    unstable_settings: { initialRouteName: "sign-in" },
+    unstable_settings: { anchor: "sign-in" },
   },
   "(auth)/sign-in": () => <Text>Sign in</Text>,
   "(auth)/sign-up": () => <Text>Sign up</Text>,
@@ -71,71 +71,71 @@ beforeEach(() => {
 
 describe("# RootNavigator", () => {
   describe("## cold start at /", () => {
-    // The URL stays "/" while the guard shows the (auth) group, so these
-    // assert on what is on screen rather than the pathname.
-    it("### signed out shows sign-in, never the tabs", () => {
+    // These assert on what is on screen rather than the pathname: the guard's
+    // redirect target is the router's concern, the visible group is ours.
+    it("### signed out shows sign-in, never the tabs", async () => {
       mockSessionStore.value = SIGNED_OUT;
 
-      renderRouter(routes, { initialUrl: "/" });
+      await renderRouter(routes, { initialUrl: "/" });
 
       expect(screen.getByText("Sign in")).toBeOnTheScreen();
       expect(screen.queryByText("Inventory")).not.toBeOnTheScreen();
     });
 
-    it("### signed in shows the inventory tab", () => {
+    it("### signed in shows the inventory tab", async () => {
       mockSessionStore.value = SIGNED_IN;
 
-      renderRouter(routes, { initialUrl: "/" });
+      await renderRouter(routes, { initialUrl: "/" });
 
       expect(screen.getByText("Inventory")).toBeOnTheScreen();
       expect(screen.queryByText("Sign in")).not.toBeOnTheScreen();
     });
 
-    it("### renders nothing while the session is loading", () => {
+    it("### renders nothing while the session is loading", async () => {
       mockSessionStore.value = { session: null, isLoading: true };
 
-      renderRouter(routes, { initialUrl: "/" });
+      await renderRouter(routes, { initialUrl: "/" });
 
       expect(screen.queryByText("Sign in")).not.toBeOnTheScreen();
       expect(screen.queryByText("Inventory")).not.toBeOnTheScreen();
     });
 
-    it("### renders nothing while the read cache is restoring", () => {
+    it("### renders nothing while the read cache is restoring", async () => {
       // A screen mounted now could fetch, then have the restore pass
       // overwrite its fresh data with the older copy from disk.
       mockSessionStore.value = SIGNED_IN;
       mockIsQueryCacheRestored.mockReturnValue(false);
 
-      renderRouter(routes, { initialUrl: "/" });
+      await renderRouter(routes, { initialUrl: "/" });
 
       expect(screen.queryByText("Inventory")).not.toBeOnTheScreen();
     });
 
-    it("### renders nothing until the read cache is claimed for the signed-in user", () => {
+    it("### renders nothing until the read cache is claimed for the signed-in user", async () => {
       // Until then the cache may hold another account's rows.
       mockSessionStore.value = SIGNED_IN;
       mockIsQueryCacheClaimed.mockReturnValue(false);
 
-      renderRouter(routes, { initialUrl: "/" });
+      await renderRouter(routes, { initialUrl: "/" });
 
       expect(mockIsQueryCacheClaimed).toHaveBeenCalledWith("user-1");
       expect(screen.queryByText("Inventory")).not.toBeOnTheScreen();
     });
 
-    it("### signed out shows sign-in without waiting for a claim", () => {
+    it("### signed out shows sign-in without waiting for a claim", async () => {
       mockSessionStore.value = SIGNED_OUT;
       mockIsQueryCacheClaimed.mockReturnValue(false);
 
-      renderRouter(routes, { initialUrl: "/" });
+      await renderRouter(routes, { initialUrl: "/" });
 
       expect(screen.getByText("Sign in")).toBeOnTheScreen();
     });
   });
 
   describe("## session changes", () => {
-    it("### signing out moves to sign-in", () => {
+    it("### signing out moves to sign-in", async () => {
       mockSessionStore.value = SIGNED_IN;
-      renderRouter(routes, { initialUrl: "/" });
+      await renderRouter(routes, { initialUrl: "/" });
 
       act(() => mockSessionStore.set(SIGNED_OUT));
 
@@ -143,9 +143,9 @@ describe("# RootNavigator", () => {
       expect(screen.queryByText("Inventory")).not.toBeOnTheScreen();
     });
 
-    it("### signing in moves to the inventory tab", () => {
+    it("### signing in moves to the inventory tab", async () => {
       mockSessionStore.value = SIGNED_OUT;
-      renderRouter(routes, { initialUrl: "/sign-in" });
+      await renderRouter(routes, { initialUrl: "/sign-in" });
 
       act(() => mockSessionStore.set(SIGNED_IN));
 
@@ -155,10 +155,10 @@ describe("# RootNavigator", () => {
   });
 
   describe("## auth-callback", () => {
-    it("### is reachable while signed out", () => {
+    it("### is reachable while signed out", async () => {
       mockSessionStore.value = SIGNED_OUT;
 
-      renderRouter(routes, { initialUrl: "/auth-callback" });
+      await renderRouter(routes, { initialUrl: "/auth-callback" });
 
       expect(screen.getByText("Finishing sign-in")).toBeOnTheScreen();
     });

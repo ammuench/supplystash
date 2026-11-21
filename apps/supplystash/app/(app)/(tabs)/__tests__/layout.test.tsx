@@ -47,8 +47,8 @@ const routes = {
 
 describe("# TabsLayout", () => {
   describe("## home tab", () => {
-    it("### an opened home keeps the tab bar", () => {
-      const view = renderRouter(routes, { initialUrl: "/" });
+    it("### an opened home keeps the tab bar", async () => {
+      const view = await renderRouter(routes, { initialUrl: "/" });
 
       act(() => router.push("/homes/home-1"));
 
@@ -59,8 +59,8 @@ describe("# TabsLayout", () => {
 
     // `/homes/new` sits outside the tabs and `/homes/[homeId]` inside them,
     // under the same URL prefix. The static route must still win.
-    it("### the create form is not mistaken for a home id", () => {
-      renderRouter(routes, { initialUrl: "/" });
+    it("### the create form is not mistaken for a home id", async () => {
+      await renderRouter(routes, { initialUrl: "/" });
 
       act(() => router.push("/homes/new"));
 
@@ -70,8 +70,8 @@ describe("# TabsLayout", () => {
   });
 
   describe("## add item", () => {
-    it("### pressing the center slot pushes the add-item screen", () => {
-      const view = renderRouter(routes, { initialUrl: "/lists" });
+    it("### pressing the center slot pushes the add-item screen", async () => {
+      const view = await renderRouter(routes, { initialUrl: "/lists" });
 
       fireEvent.press(screen.getByText("Add Item"));
 
@@ -79,8 +79,8 @@ describe("# TabsLayout", () => {
       expect(screen.getByText("Add Item screen")).toBeOnTheScreen();
     });
 
-    it("### going back returns to the tab the user was on", () => {
-      const view = renderRouter(routes, { initialUrl: "/lists" });
+    it("### going back returns to the tab the user was on", async () => {
+      const view = await renderRouter(routes, { initialUrl: "/lists" });
       fireEvent.press(screen.getByText("Add Item"));
 
       act(() => router.back());
@@ -89,8 +89,8 @@ describe("# TabsLayout", () => {
       expect(screen.getByText("Lists screen")).toBeOnTheScreen();
     });
 
-    it("### a direct visit to the center slot's route lands on add-item", () => {
-      const view = renderRouter(routes, { initialUrl: "/add" });
+    it("### a direct visit to the center slot's route lands on add-item", async () => {
+      const view = await renderRouter(routes, { initialUrl: "/add" });
 
       expect(view.getPathname()).toBe("/add-item");
     });

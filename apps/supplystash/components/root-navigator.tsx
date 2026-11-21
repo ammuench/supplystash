@@ -28,7 +28,10 @@ export const RootNavigator = () => {
   // included.
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!!session}>
+      {/* Explicit redirect: since SDK 58 a signed-out cold start on an (app)
+          URL such as "/" shows Unmatched Route instead of falling through to
+          the first allowed screen. */}
+      <Stack.Protected guard={!!session} redirectTo="/sign-in">
         <Stack.Screen name="(app)" />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
