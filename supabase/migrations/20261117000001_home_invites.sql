@@ -23,7 +23,9 @@ create table if not exists public.home_invites (
   id uuid primary key default gen_random_uuid(),
   home_id uuid not null references public.homes (id) on delete cascade,
   -- 128 random bits: not guessable, and hex is safe in a URL without escaping.
-  token text not null unique default encode(gen_random_bytes(16), 'hex'),
+  -- Schema-qualified: Supabase installs pgcrypto in `extensions`, which is not
+  -- on the search_path when `supabase db push` runs a migration.
+  token text not null unique default encode(extensions.gen_random_bytes(16), 'hex'),
   role text not null default 'member' check (role in ('member', 'viewer')),
   -- Cascade: an invite from a deleted account should stop working.
   created_by_id uuid not null references auth.users (id) on delete cascade,
