@@ -1,11 +1,7 @@
-import { View } from "react-native";
-
 import type { Home } from "@/state/homes";
 
-import { HomeCover } from "@/components/home-cover";
-import { HomeStatPills } from "@/components/home-stat-pills";
+import { HomeSummaryCard } from "@/components/home-summary-card";
 import { PressableSurface } from "@/components/ui/pressable-surface";
-import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
 export type HomeCardProps = {
@@ -16,7 +12,11 @@ export type HomeCardProps = {
 };
 
 /**
- * One home in a list: its cover, name, member count and stock pills.
+ * One home in a list: its cover, stock pills, name and member count.
+ *
+ * Feedback is a dim, not PressableSurface's usual accent wash. The card's own
+ * background has to travel with the shared transition into the details
+ * header, and it covers the wash, which is drawn behind it.
  *
  * @component
  * @example
@@ -28,16 +28,9 @@ export const HomeCard = ({ home, onPress, className }: HomeCardProps) => (
   <PressableSurface
     role="link"
     aria-label={home.name}
-    className={cn("gap-3 rounded-lg border border-border p-3", className)}
+    className={cn("rounded-lg active:opacity-80 web:hover:opacity-90", className)}
     onPress={onPress}
   >
-    <HomeCover home={home} className="h-24 rounded-md" />
-    <View className="gap-1">
-      <Text className="text-lg leading-tight font-semibold">{home.name}</Text>
-      <Text className="text-sm leading-tight text-muted-foreground">
-        {home.memberCount} {home.memberCount === 1 ? "member" : "members"}
-      </Text>
-    </View>
-    <HomeStatPills />
+    <HomeSummaryCard home={home} />
   </PressableSurface>
 );

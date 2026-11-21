@@ -24,7 +24,7 @@ export const HomeCover = ({
 }: {
   home: Home;
   className?: string;
-  /** Laid over the cover, such as the stat pills on the details banner. */
+  /** Laid over the cover, such as the stat pills. */
   children?: React.ReactNode;
 }) => {
   const backgroundColor = useHomeCoverColor(home.id);

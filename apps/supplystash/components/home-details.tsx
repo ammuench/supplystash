@@ -1,11 +1,18 @@
+import { useIsFocused } from "expo-router";
 import { ChevronLeftIcon } from "lucide-react-native";
+import { useEffect } from "react";
 import { View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from "react-native-reanimated";
 import { useCSSVariable } from "uniwind";
 
 import type { Home } from "@/state/homes";
 
-import { HomeCover } from "@/components/home-cover";
-import { HomeStatPills } from "@/components/home-stat-pills";
+import { HOME_CARD_TRANSITION_MS, HomeSummaryCard } from "@/components/home-summary-card";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,29 +29,56 @@ const ITEM_VIEWS = [
 
 const ignoreViewChange = () => {};
 
+// The card arrives through the shared transition and the button is not part of
+// the card it comes from, so it fades in once the move is done instead of
+// popping in. Leaving, the screen goes away the moment navigation starts, too
+// soon for a fade, so a press fades the button out first and navigates after.
+// A swipe back fades it when the screen loses focus.
+const FADE_IN_MS = 150;
+const FADE_OUT_MS = 100;
+
 const BackButton = ({ onPress }: { onPress: () => void }) => {
   const foreground = useCSSVariable("--color-foreground");
+  const isFocused = useIsFocused();
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    opacity.value = isFocused
+      ? withDelay(HOME_CARD_TRANSITION_MS, withTiming(1, { duration: FADE_IN_MS }))
+      : withTiming(0, { duration: FADE_OUT_MS });
+  }, [isFocused, opacity]);
+
+  const fadeOutThenLeave = () => {
+    opacity.value = withTiming(0, { duration: FADE_OUT_MS });
+    setTimeout(onPress, FADE_OUT_MS);
+  };
+
+  const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
-    <Button
-      variant="secondary"
-      size="icon"
-      aria-label="Back to homes"
-      className="absolute top-3 left-3 rounded-full"
-      onPress={onPress}
-    >
-      <Icon
-        as={ChevronLeftIcon}
-        color={typeof foreground === "string" ? foreground : undefined}
-        size={20}
-      />
-    </Button>
+    // Reanimated's own view with plain styles: Uniwind's className wrapper
+    // turns the animated style into a static one, so the fade never ran.
+    <Animated.View style={[{ position: "absolute", top: 12, left: 12 }, fadeStyle]}>
+      <Button
+        variant="secondary"
+        size="icon"
+        aria-label="Back to homes"
+        className="rounded-full"
+        onPress={fadeOutThenLeave}
+      >
+        <Icon
+          as={ChevronLeftIcon}
+          color={typeof foreground === "string" ? foreground : undefined}
+          size={20}
+        />
+      </Button>
+    </Animated.View>
   );
 };
 
 /**
- * A home's page: the cover banner with its stock pills, the name and member
- * count, then the item list's view switcher and the list itself. Shared by the
+ * A home's page: its summary card (cover, stock pills, name and member count),
+ * then the item list's view switcher and the list itself. Shared by the
  * home details screen and by the Home tab when the user has only one home.
  *
  * @component
@@ -62,18 +96,7 @@ export const HomeDetails = ({
   onBack?: () => void;
 }) => (
   <View className="flex-1 gap-4">
-    <View className="overflow-hidden rounded-lg bg-card" style={{ borderCurve: "continuous" }}>
-      <HomeCover home={home} className="h-34">
-        <HomeStatPills className="absolute right-3 bottom-3" />
-        {onBack ? <BackButton onPress={onBack} /> : null}
-      </HomeCover>
-      <View className="gap-1 p-4">
-        <Text className="text-xl leading-tight font-semibold">{home.name}</Text>
-        <Text className="text-sm leading-tight text-muted-foreground">
-          {home.memberCount} {home.memberCount === 1 ? "member" : "members"}
-        </Text>
-      </View>
-    </View>
+    <HomeSummaryCard home={home}>{onBack ? <BackButton onPress={onBack} /> : null}</HomeSummaryCard>
 
     <Tabs value="all" onValueChange={ignoreViewChange}>
       <TabsList>

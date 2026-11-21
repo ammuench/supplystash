@@ -1,4 +1,4 @@
-import { render, screen, userEvent } from "@testing-library/react-native";
+import { render, screen, userEvent, waitFor } from "@testing-library/react-native";
 import { router } from "expo-router";
 
 import type { Home } from "@/state/homes";
@@ -12,6 +12,7 @@ const ME = "user-me";
 // The screen is rendered on its own, outside a navigator.
 jest.mock("expo-router", () => ({
   router: { back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
+  useIsFocused: () => true,
   useLocalSearchParams: () => ({ homeId: "home-1" }),
 }));
 const mockRouter = jest.mocked(router);
@@ -120,7 +121,8 @@ describe("# HomeDetailsScreen", () => {
 
       await user.press(screen.getByRole("button", { name: "Back to homes" }));
 
-      expect(mockRouter.back).toHaveBeenCalledTimes(1);
+      // After the button's fade-out.
+      await waitFor(() => expect(mockRouter.back).toHaveBeenCalledTimes(1));
     });
 
     it("### a home opened from a link, with nothing under it, goes to the list", async () => {

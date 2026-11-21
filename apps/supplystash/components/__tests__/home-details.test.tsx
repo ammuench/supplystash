@@ -1,8 +1,11 @@
-import { render, screen, userEvent } from "@testing-library/react-native";
+import { render, screen, userEvent, waitFor } from "@testing-library/react-native";
 
 import type { Home } from "@/state/homes";
 
 import { HomeDetails } from "@/components/home-details";
+
+// Rendered outside a navigator; the back button fades with the screen's focus.
+jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 
 jest.mock("lucide-react-native", () => ({
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -42,7 +45,8 @@ describe("# HomeDetails", () => {
 
       await user.press(screen.getByRole("button", { name: "Back to homes" }));
 
-      expect(onBack).toHaveBeenCalledTimes(1);
+      // After the button's fade-out.
+      await waitFor(() => expect(onBack).toHaveBeenCalledTimes(1));
     });
 
     it("### is left out otherwise", () => {
