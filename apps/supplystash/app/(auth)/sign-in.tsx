@@ -1,7 +1,7 @@
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { Link, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { type TextInput, View } from "react-native";
+import { type TextInputInstance, View } from "react-native";
 
 import { AppSafeScrollScreen } from "@/components/app-safe-screen";
 import { FormFieldErrors } from "@/components/form-field-errors";
@@ -17,7 +17,7 @@ import { signInSchema } from "@/lib/schemas/auth";
 // and forgot-password link (no OAuth and no reset flow exist yet). Real designs
 // are pending — the logic underneath is the point.
 export default function SignInScreen() {
-  const passwordInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInputInstance>(null);
   // A bounced OAuth callback hands its reason over as a param (see
   // app/auth-callback.tsx). It is the same kind of form-level failure as a
   // rejected password, so it fills the same slot and is cleared by the next

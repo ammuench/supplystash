@@ -7,7 +7,7 @@ function Input({
   className,
   placeholderTextColor,
   ...props
-}: React.ComponentProps<typeof TextInput> & React.RefAttributes<TextInput>) {
+}: React.ComponentPropsWithRef<typeof TextInput>) {
   // Native placeholder color goes through the prop, not a `placeholder:` class:
   // on Android the class-derived color goes stale when the theme changes while
   // the app is open (STASH-32). `useCSSVariable` re-renders on theme change.

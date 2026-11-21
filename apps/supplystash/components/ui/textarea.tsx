@@ -7,7 +7,7 @@ function Textarea({
   multiline = true,
   numberOfLines = Platform.select({ web: 2, native: 8 }), // On web, numberOfLines also determines initial height. On native, it determines the maximum height.
   ...props
-}: React.ComponentProps<typeof TextInput> & React.RefAttributes<TextInput>) {
+}: React.ComponentPropsWithRef<typeof TextInput>) {
   return (
     <TextInput
       className={cn(

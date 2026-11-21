@@ -1,7 +1,7 @@
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { Link } from "expo-router";
 import { useRef, useState } from "react";
-import { type TextInput, View } from "react-native";
+import { type TextInputInstance, View } from "react-native";
 
 import { AppSafeScrollScreen } from "@/components/app-safe-screen";
 import { FormFieldErrors } from "@/components/form-field-errors";
@@ -21,7 +21,7 @@ const PASSWORD_HINT = `At least ${PASSWORD_MIN_LENGTH} characters, with an upper
 // (no OAuth exists yet). Real designs are pending — the logic underneath is the
 // point.
 export default function SignUpScreen() {
-  const passwordInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInputInstance>(null);
   // Supabase failures are form-level: "email already registered" belongs to the
   // attempt, not to a single field's syntax.
   const [formError, setFormError] = useState<string | null>(null);

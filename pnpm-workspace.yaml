@@ -4,6 +4,8 @@ packages:
 # non-interactive context (git hooks, CI).
 verifyDepsBeforeRun: false
 allowBuilds:
+  # Jest 30's watch mode only; ships prebuilt binaries, so no build script needed.
+  "@parcel/watcher": false
   "@posthog/cli": true
   lefthook: true
   squawk-cli: true
