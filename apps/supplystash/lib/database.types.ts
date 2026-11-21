@@ -68,6 +68,53 @@ export type Database = {
         };
         Relationships: [];
       };
+      home_invites: {
+        Row: {
+          created_at: string;
+          created_by_id: string;
+          expires_at: string;
+          home_id: string;
+          id: string;
+          revoked_at: string | null;
+          role: string;
+          token: string;
+          used_at: string | null;
+          used_by_id: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          created_by_id: string;
+          expires_at?: string;
+          home_id: string;
+          id?: string;
+          revoked_at?: string | null;
+          role?: string;
+          token?: string;
+          used_at?: string | null;
+          used_by_id?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          created_by_id?: string;
+          expires_at?: string;
+          home_id?: string;
+          id?: string;
+          revoked_at?: string | null;
+          role?: string;
+          token?: string;
+          used_at?: string | null;
+          used_by_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "home_invites_home_id_fkey";
+            columns: ["home_id"];
+            isOneToOne: false;
+            referencedRelation: "homes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       homes: {
         Row: {
           created_at: string;
@@ -370,9 +417,24 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      accept_invite: {
+        Args: { p_token: string };
+        Returns: {
+          already_member: boolean;
+          home_id: string;
+        }[];
+      };
       create_home: {
         Args: { p_description?: string; p_name: string };
         Returns: string;
+      };
+      create_invite: {
+        Args: { p_home_id: string; p_role?: string };
+        Returns: {
+          expires_at: string;
+          invite_id: string;
+          token: string;
+        }[];
       };
       delete_home: { Args: { p_home_id: string }; Returns: undefined };
       delete_own_account: { Args: never; Returns: undefined };
@@ -389,6 +451,7 @@ export type Database = {
         Args: { p_home_id: string; p_target_user_id: string };
         Returns: undefined;
       };
+      revoke_invite: { Args: { p_invite_id: string }; Returns: undefined };
       transfer_ownership: {
         Args: { p_home_id: string; p_new_owner_user_id: string };
         Returns: undefined;
