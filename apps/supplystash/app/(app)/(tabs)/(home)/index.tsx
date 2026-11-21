@@ -43,8 +43,9 @@ export default function HomeScreen() {
   return (
     <AppSafeScreen className="gap-4 p-4">
       {/* Outside the scroller, so the title and Add stay at the top. */}
-      <View className="flex-row items-center justify-between">
-        <Text className="text-xl font-semibold">{onlyHome ? onlyHome.name : "Homes"}</Text>
+      {/* With one home, its page below shows the name, so the title goes. */}
+      <View className={onlyHome ? "flex-row justify-end" : "flex-row items-center justify-between"}>
+        {onlyHome ? null : <Text className="text-xl font-semibold">Homes</Text>}
         {showAdd ? (
           <BlockedControl action="membership" label="Add home">
             {(blocked) => (

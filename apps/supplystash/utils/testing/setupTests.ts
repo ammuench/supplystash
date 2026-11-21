@@ -171,3 +171,29 @@ jest.mock("uniwind", () => ({
   ...jest.requireActual("uniwind"),
   useCSSVariable: jest.fn(),
 }));
+
+// Reanimated's own jest mock still loads the native worklets runtime, which
+// does not exist under jest. This stub covers the home card's shared element
+// transition (components/home-summary-card.tsx, the (home) stack's boundary)
+// and the details back button's fade: views render as plain ones, the
+// boundary passes its children through, and animations jump to their end
+// value. A suite that
+// needs more of Reanimated mocks it locally, which overrides this.
+jest.mock("react-native-reanimated", () => {
+  const { View } = jest.requireActual<typeof import("react-native")>("react-native");
+
+  return {
+    __esModule: true,
+    default: { View },
+    SharedTransitionBoundary: ({ children }: { children: React.ReactNode }) => children,
+    SharedTransition: class {
+      duration() {
+        return this;
+      }
+    },
+    useSharedValue: <T>(value: T) => ({ value }),
+    useAnimatedStyle: <T>(style: () => T) => style(),
+    withTiming: <T>(value: T) => value,
+    withDelay: <T>(_delay: number, value: T) => value,
+  };
+});
